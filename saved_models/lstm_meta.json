@@ -1,0 +1,16 @@
+{
+  "input_size": 11,
+  "feature_cols": [
+    "current_length",
+    "prev_length",
+    "mean_length",
+    "std_length",
+    "mean_last3",
+    "std_last3",
+    "trend",
+    "deviation_from_mean",
+    "period_duration",
+    "avg_flow",
+    "avg_sleep"
+  ]
+}

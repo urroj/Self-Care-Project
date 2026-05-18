@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cycle.tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body, #root { height: 100%; }
+
+      body {
+        font-family: "Press Start 2P", "Courier New", monospace;
+        -webkit-font-smoothing: none;
+        image-rendering: pixelated;
+        line-height: 1.8;
+        min-height: 100vh;
+        /* Pink-mauve gradient — no purple */
+        background:
+          radial-gradient(ellipse at 15% 18%, rgba(255,220,235,0.60) 0%, transparent 50%),
+          radial-gradient(ellipse at 82% 78%, rgba(220,130,170,0.45) 0%, transparent 50%),
+          linear-gradient(150deg,
+            #FFD0E8 0%,
+            #F4A8D0 18%,
+            #E888BC 38%,
+            #D870A8 58%,
+            #C86098 78%,
+            #B85088 100%
+          );
+        background-attachment: fixed;
+      }
+
+      /* Tile grid overlay */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255,255,255,0.09) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.09) 1px, transparent 1px);
+        background-size: 44px 44px;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* Default: pixel heart */
+      * {
+        cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'><path d='M10,17 C10,17 2,11.5 2,6.5 A4,4 0 0,1 10,5.5 A4,4 0 0,1 18,6.5 C18,11.5 10,17 10,17 Z' fill='%23E87090' stroke='%237A1A38' stroke-width='2'/><rect x='5' y='5' width='2' height='2' fill='%23FFB8C8'/></svg>") 10 17, auto;
+      }
+
+      /* Text inputs: gold pixel star */
+      input, textarea, select {
+        cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'><polygon points='10,2 12,8 18,8 13,12 15,18 10,14 5,18 7,12 2,8 8,8' fill='%23FFD700' stroke='%23B8860B' stroke-width='1'/><rect x='9' y='0' width='2' height='2' fill='%23FFFFFF' opacity='0.9'/></svg>") 10 10, text;
+      }
+
+      /* Buttons: lighter heart */
+      button, [role=button], label {
+        cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'><path d='M10,17 C10,17 2,11.5 2,6.5 A4,4 0 0,1 10,5.5 A4,4 0 0,1 18,6.5 C18,11.5 10,17 10,17 Z' fill='%23FFB8C8' stroke='%237A1A38' stroke-width='2'/><rect x='5' y='5' width='2' height='2' fill='%23FFFFFF'/></svg>") 10 17, pointer;
+      }
+
+      ::-webkit-scrollbar { width: 12px; height: 12px; }
+      ::-webkit-scrollbar-track { background: rgba(255,180,210,0.25); border: 1px solid rgba(200,80,130,0.25); }
+      ::-webkit-scrollbar-thumb { background: #E87090; border: 2px solid #7A1A38; }
+      ::-webkit-scrollbar-thumb:hover { background: #C4506A; }
+      ::-webkit-scrollbar-corner { background: transparent; }
+
+      ::selection { background: #E87090; color: #FFFFFF; }
+      ::placeholder { color: #C490A8; font-family: "Press Start 2P", monospace; font-size: 7px; }
+
+      #root { position: relative; z-index: 1; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -1,0 +1,49 @@
+# ── Personal data & secrets ───────────────────────────────────────────────────
+.env                        # DB credentials — never commit this
+
+# ── Downloaded public datasets ────────────────────────────────────────────────
+data/raw/fehring_cycle_data.csv                 # Fehring CSV, mcPHASES CSVs — download manually
+data/raw/mcphases_data/                             # mcPHASES raw data — download manually
+data/cache/                 # Auto-generated parquet cache — rebuilt on --setup
+
+# ── Trained model checkpoints ─────────────────────────────────────────────────
+saved_models/               # population_prior.json, lstm*.pt, bayesian_state.json
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+pip-wheel-metadata/
+*.whl
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# ── Frontend build output ─────────────────────────────────────────────────────
+frontend/node_modules/      # reinstall with: cd frontend && npm install
+frontend/dist/              # rebuild with: cd frontend && npm run build
+
+# ── OS & editor files ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
