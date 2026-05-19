@@ -169,3 +169,28 @@ LEFT JOIN daily_logs dl ON dl.cycle_id = c.id
 WHERE c.is_complete = TRUE
 GROUP BY c.id
 ORDER BY c.cycle_number;
+
+
+-- ---------------------------------------------------------------------------
+-- Adds personal journal entries table.
+-- Storage: PostgreSQL TEXT with automatic TOAST compression.
+-- Even 10 years of daily entries (~3650 rows) uses < 10MB compressed.
+-- ---------------------------------------------------------------------------
+DROP TABLE IF EXISTS journal_entries;
+
+CREATE TABLE IF NOT EXISTS journal_entries (
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    entry_date  DATE        NOT NULL UNIQUE,
+    weather     VARCHAR(30) NOT NULL DEFAULT '',
+    content     TEXT        NOT NULL DEFAULT '',
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Explicit index for fast date lookups and ON CONFLICT resolution
+CREATE UNIQUE INDEX IF NOT EXISTS idx_journal_entry_date
+    ON journal_entries (entry_date);
+
+
+select * from daily_logs;
+

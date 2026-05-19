@@ -1,10 +1,13 @@
 # Self Care Journal
+Take charge of your data. With barrier to entry for coding bieng at an all time low. You can create your own applications instead of giving money and private health data to thrid party apps. 
 
-A personal menstrual cycle tracker and ovulation predictor for irregular cycles.
+This is a personal menstrual cycle tracker and ovulation predictor for irregular cycles (if you want normal cycles check data/loaders.py file).
 All data stays local — PostgreSQL on your own machine, no cloud, no third parties.
 
 The ML model improves automatically every month as you log new cycles, progressing
 through three phases from a population prior all the way to a fine-tuned personal LSTM.
+
+It doesn't have to stop here. You can turn this into a complete digital journal. Next itirations will add an option for journal entries, monitoring your ETFs (alot of potential here to learn forecasting) etc. 
 
 ---
 
@@ -218,9 +221,7 @@ from phase transitions in `hormones_and_selfreport.csv`, detects ovulation day
 from the LH column peak, merges optional enrichment files (sleep score converted
 to hours, stress score inverted to 1–3 Likert, skin temperature).
 
-`load_all_public()` combines both datasets. The Kaggle Bisht 2021 dataset is
-intentionally excluded — it is structurally identical to Fehring and loading
-both would inflate the prior with duplicate subjects.
+`load_all_public()` combines both datasets.
 
 `irregular_subset()` filters to subjects with cycle std > 7 days or mean >= 30
 days, matching the target user profile of an irregular ~35 day cycle.

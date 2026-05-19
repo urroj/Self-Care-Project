@@ -313,3 +313,33 @@ def save_model_run(
             psycopg2.extras.Json(metrics or {}),
         )
     )
+
+# ── Journal entries ───────────────────────────────────────────────────────────
+
+def get_journal_entry(entry_date: str) -> dict | None:
+    """Return a single journal entry by date, or None if no entry exists."""
+    rows = _fetch(
+        """
+        SELECT entry_date::text, weather, content,
+               to_char(updated_at, 'YYYY-MM-DD HH24:MI') AS last_saved
+        FROM journal_entries
+        WHERE entry_date = %s::date
+        """,
+        (entry_date,)
+    )
+    return rows[0] if rows else None
+
+
+def upsert_journal_entry(entry_date: str, weather: str = "", content: str = "") -> None:
+    """Insert or update a journal entry. One row per calendar day."""
+    _execute(
+        """
+        INSERT INTO journal_entries (entry_date, weather, content)
+        VALUES (%s::date, %s, %s)
+        ON CONFLICT (entry_date) DO UPDATE
+        SET weather    = EXCLUDED.weather,
+            content    = EXCLUDED.content,
+            updated_at = NOW()
+        """,
+        (entry_date, weather, content)
+    )

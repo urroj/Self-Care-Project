@@ -303,6 +303,141 @@ def get_insights():
         raise HTTPException(500, str(e))
 
 
+
+
+# ── Journal ───────────────────────────────────────────────────────────────────
+
+class JournalIn(BaseModel):
+    date:    str
+    weather: str = ""
+    content: str = ""
+
+
+@app.get("/api/journal/{date}")
+def get_journal(date: str):
+    try:
+        from db.connector import get_journal_entry
+    except ImportError as e:
+        raise HTTPException(500, f"connector import failed: {e}")
+
+    try:
+        entry = get_journal_entry(date)
+        return entry if entry else {
+            "entry_date": date, "weather": "", "content": "", "last_saved": None
+        }
+    except Exception as e:
+        err = str(e)
+        if "journal_entries" in err and "does not exist" in err:
+            raise HTTPException(500, "TABLE NOT FOUND: run journal_migration.sql first")
+        if "get_journal_entry" in err:
+            raise HTTPException(500, "FUNCTION NOT FOUND: update db/connector.py")
+        if "could not connect" in err.lower() or "connection refused" in err.lower():
+            raise HTTPException(500, "DB NOT CONNECTED: check DB_URL in .env")
+        raise HTTPException(500, f"DB ERROR: {err}")
+
+
+@app.post("/api/journal")
+def save_journal(data: JournalIn):
+    try:
+        from db.connector import upsert_journal_entry
+    except ImportError as e:
+        raise HTTPException(500, f"connector import failed: {e}")
+
+    try:
+        upsert_journal_entry(data.date, data.weather, data.content)
+        return {"status": "saved"}
+    except Exception as e:
+        err = str(e)
+        if "journal_entries" in err and "does not exist" in err:
+            raise HTTPException(500, "TABLE NOT FOUND: run journal_migration.sql first")
+        if "upsert_journal_entry" in err:
+            raise HTTPException(500, "FUNCTION NOT FOUND: update db/connector.py")
+        if "could not connect" in err.lower() or "connection refused" in err.lower():
+            raise HTTPException(500, "DB NOT CONNECTED: check DB_URL in .env")
+        if "unique" in err.lower():
+            raise HTTPException(500, f"CONSTRAINT ERROR: {err}")
+        raise HTTPException(500, f"DB ERROR: {err}")
+
+
+
+
+# ── ETF data (Yahoo Finance proxy) ────────────────────────────────────────────
+
+@app.get("/api/etf/{symbol}")
+def get_etf_data(symbol: str, range: str = "1mo"):
+    """
+    Proxy Yahoo Finance chart data to avoid CORS.
+    range: 1wk | 1mo | 1y
+    Returns list of { date, close, open, high, low } dicts.
+    """
+    import requests as _req
+    from datetime import datetime as _dt
+
+    # Map our range names to Yahoo Finance params
+    range_map = {
+        "1wk": ("1wk",  "1h"),
+        "1mo": ("1mo",  "1d"),
+        "1y":  ("1y",   "1d"),
+    }
+    yf_range, interval = range_map.get(range, ("1mo", "1d"))
+
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "application/json",
+    }
+    params = {
+        "interval": interval,
+        "range":    yf_range,
+        "includePrePost": "false",
+    }
+    try:
+        resp = _req.get(url, headers=headers, params=params, timeout=12)
+        resp.raise_for_status()
+        data = resp.json()
+
+        result = data.get("chart", {}).get("result", [])
+        if not result:
+            err = data.get("chart", {}).get("error", {})
+            raise HTTPException(502, f"Yahoo Finance: {err.get('description', 'no data')}")
+
+        r         = result[0]
+        timestamps = r.get("timestamp", [])
+        closes     = r["indicators"]["quote"][0].get("close", [])
+        opens      = r["indicators"]["quote"][0].get("open",  [])
+        highs      = r["indicators"]["quote"][0].get("high",  [])
+        lows       = r["indicators"]["quote"][0].get("low",   [])
+        meta       = r.get("meta", {})
+
+        rows = []
+        for i, ts in enumerate(timestamps):
+            c = closes[i] if i < len(closes) else None
+            if c is None:
+                continue
+            rows.append({
+                "date":     _dt.utcfromtimestamp(ts).strftime("%Y-%m-%d %H:%M"),
+                "close":    round(float(c), 4),
+                "open":     round(float(opens[i]),  4) if i < len(opens)  and opens[i]  else None,
+                "high":     round(float(highs[i]),  4) if i < len(highs)  and highs[i]  else None,
+                "low":      round(float(lows[i]),   4) if i < len(lows)   and lows[i]   else None,
+            })
+
+        return {
+            "symbol":    symbol,
+            "shortName": meta.get("shortName", symbol),
+            "currency":  meta.get("currency", ""),
+            "exchange":  meta.get("exchangeName", ""),
+            "range":     range,
+            "data":      rows,
+            "current":   round(float(meta.get("regularMarketPrice", 0)), 4),
+            "prev_close":round(float(meta.get("previousClose",      0)), 4),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, f"ETF fetch failed for {symbol}: {str(e)[:200]}")
+
+
 # ── Static file serving (production build) ────────────────────────────────────
 
 DIST = ROOT / "frontend" / "dist"
@@ -316,6 +451,9 @@ if DIST.exists():
 
     @app.get("/{full_path:path}")
     def serve_spa(full_path: str):
+        # Never intercept API routes — let FastAPI handle them
+        if full_path.startswith("api/"):
+            raise HTTPException(404, "API route not found")
         target = DIST / full_path
         if target.exists() and target.is_file():
             return FileResponse(str(target))

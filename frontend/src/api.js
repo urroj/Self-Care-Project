@@ -39,4 +39,11 @@ export const api = {
 
   // ── Insights ──────────────────────────────────────────────────────────────
   getInsights: () => req('/insights'),
+
+  // ── Journal entries ───────────────────────────────────────────────────────
+  getJournalEntry: (date) => req(`/journal/${date}`),
+  saveJournalEntry: (data) => req('/journal', { method: 'POST', body: JSON.stringify(data) }),
+
+  // ── ETF data ─────────────────────────────────────────────────────────────
+  getETF: (symbol, range = '1mo') => req(`/etf/${symbol}?range=${range}`),
 }

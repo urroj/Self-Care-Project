@@ -16,10 +16,6 @@ Supported sources
               stress_score.csv, computed_temperature.csv
    Download from: https://physionet.org/content/mcphases/1.0.0/
 
-NOTE: The Kaggle "Menstrual Cycle Data" (Bisht 2021) dataset has the same
-columns and structure as the Fehring dataset and is NOT loaded separately
-to avoid duplicate subjects inflating the prior.
-
 Each loader returns a standardised pandas DataFrame with columns defined
 in STANDARD_COLS below. Missing fields are NaN.
 """
@@ -411,9 +407,6 @@ def load_all_public() -> pd.DataFrame:
         1. Fehring / Marquette 2012  (data/raw/fehring_cycle_data.csv)
         2. Physionet mcPHASES 2024   (data/raw/mcphases/*.csv)
 
-    NOTE: The Kaggle dataset (Bisht 2021) is structurally identical to
-    Fehring and is intentionally excluded to avoid inflating the prior
-    with duplicate subjects.
     """
     parts = []
     for name, loader in [("Fehring", load_fehring), ("mcPHASES", load_mcphases)]:
