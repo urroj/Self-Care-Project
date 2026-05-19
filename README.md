@@ -1,14 +1,18 @@
 # Self Care Journal
-Take charge of your data. With barrier to entry for coding bieng at an all time low. You can create your own applications instead of giving money and private health data to thrid party apps. 
 
-This is a personal menstrual cycle tracker and ovulation predictor for irregular cycles (if you want normal cycles check data/loaders.py file).
-All data stays local — PostgreSQL on your own machine, no cloud, no third parties.
+Take charge of your data. With the barrier to entry for coding at an all time low, you can build your own applications instead of handing money and private health data to third-party apps.
 
-The ML model improves automatically every month as you log new cycles, progressing
-through three phases from a population prior all the way to a fine-tuned personal LSTM.
+This started as a personal menstrual cycle tracker and ovulation predictor for irregular cycles (if you want normal cycles check `data/loaders.py`). All data stays local — PostgreSQL on your own machine, no cloud, no third parties.
 
-It doesn't have to stop here. You can turn this into a complete digital journal. Next itirations will add an option for journal entries, monitoring your ETFs (alot of potential here to learn forecasting) etc. 
+The ML model improves automatically every month as you log new cycles, progressing through three phases from a population prior all the way to a fine-tuned personal LSTM.
 
+It does not stop at cycle tracking. This release adds a personal journal, and an Islamic ETF tracker (Currently tracking two that I am invested in. You can change them in ETFWindow.jsx file. details below). Future iterations can keep adding windows — the desktop is yours.
+
+Future changes planned:
+1. Add a prediction model for the ETFs
+2. Add your invesmnet to track actual growth
+3. Retrieve journal entries
+4. Add edge case handling
 ---
 
 ## Table of Contents
@@ -36,11 +40,16 @@ PUBLIC DATASETS (bootstrap)
 YOUR DATA (PostgreSQL)       │
   cycles table            ──┤
   daily_logs table        ──┼──► Active Model
-  model_runs table        ──┘      Phase 1 (<3 cycles)  → Population Prior
-                                   Phase 2 (3–7 cycles) → Bayesian update
+  journal_entries table   ──┤      Phase 1 (<3 cycles)  → Population Prior
+  model_runs table        ──┘      Phase 2 (3–7 cycles) → Bayesian update
                                    Phase 3 (8+ cycles)  → Fine-tuned LSTM
 
+Yahoo Finance (live)  ──► FastAPI proxy ──► ETF charts
+
 FastAPI backend ──► React frontend ──► PyWebView native window
+                                         ├── Cycle Tracker window
+                                         ├── Journal window
+                                         └── ETF Tracker window
 ```
 
 ---
@@ -59,7 +68,7 @@ cycle_tracker_app/
 ├── setup.sh                One-shot automated setup script
 │
 ├── api/
-│   └── main.py             FastAPI application — all API routes
+│   └── main.py             FastAPI — all API routes including journal + ETF proxy
 │
 ├── db/
 │   └── connector.py        All PostgreSQL reads and writes
@@ -77,21 +86,23 @@ cycle_tracker_app/
 ├── saved_models/           Auto-generated model checkpoints (do not edit)
 │
 └── frontend/
-    ├── index.html          HTML entry point — mounts the React app
+    ├── index.html          HTML entry point — pixel font, custom cursors, gradients
     ├── vite.config.js      Vite build config and dev-server API proxy
     ├── package.json        npm dependencies (React, Recharts, Vite)
     └── src/
         ├── main.jsx        React entry point — mounts App into index.html
-        ├── App.jsx         Root component — window chrome, tabs, state
+        ├── App.jsx         Multi-window desktop shell — dock, animations, drag
         ├── api.js          All fetch() calls to the FastAPI backend
-        ├── theme.js        Design tokens — colors, fonts, bevel helpers
+        ├── theme.js        Design tokens — pixel pink palette, fonts, bevel helpers
         └── components/
-            ├── Shared.jsx      Reusable UI primitives (inputs, buttons, cards)
-            ├── LogTab.jsx      Daily log form — saves to POST /api/logs
-            ├── CyclesTab.jsx   Cycle management — start, complete, stats table
-            ├── LogsTab.jsx     Filterable scrollable daily logs table
-            ├── ResultsTab.jsx  Stored predictions + run-prediction button
-            └── InsightsTab.jsx Charts (CI trend, cycle length, symptoms, mood)
+            ├── Shared.jsx          Reusable UI primitives (inputs, buttons, cards)
+            ├── LogTab.jsx          Daily log form — flow, mood, symptoms, sleep
+            ├── CyclesTab.jsx       Cycle management — start, complete, stats table
+            ├── LogsTab.jsx         Filterable scrollable daily logs table
+            ├── ResultsTab.jsx      Predictions + model explanation panel
+            ├── InsightsTab.jsx     Charts: CI trend, cycle length, symptoms, mood
+            ├── JournalWindow.jsx   Personal daily journal — ruled paper, weather
+            └── ETFWindow.jsx       Islamic ETF tracker — live charts, 1W/1M/1Y
 ```
 
 ---
@@ -102,25 +113,22 @@ cycle_tracker_app/
 
 **`app.py`**
 The single command you run to launch the app. Starts FastAPI in a background
-thread, waits for it to be ready, then opens a PyWebView native desktop window
-pointing at `http://localhost:8000`. Accepts `--dev` to point the window at the
-Vite dev server instead, and `--api-only` to run without a window (useful for
-testing routes in the browser at `localhost:8000/docs`).
+thread, waits for it to be ready, then opens a PyWebView native desktop window.
+Accepts `--dev` to point the window at the Vite dev server, and `--api-only`
+to run without a window (useful for testing routes at `localhost:8000/docs`).
 
 **`config.py`**
-Single source of truth for all constants: file paths, cycle biology thresholds
-(min/max cycle length, luteal phase mean), model phase cutoffs (3 cycles to
-Bayesian, 8 cycles to LSTM), and LSTM hyperparameters. Reads `DB_URL` and
-`MODEL_DIR` from the `.env` file via `python-dotenv`.
+Single source of truth for all constants: file paths, cycle biology thresholds,
+model phase cutoffs (3 cycles to Bayesian, 8 cycles to LSTM), and LSTM
+hyperparameters. Reads `DB_URL` and `MODEL_DIR` from `.env` via `python-dotenv`.
 
 **`demo.py`**
 Runs the full prediction pipeline with synthetic data — no PostgreSQL required.
-Useful for testing that the ML code works before the database is configured.
-Simulates 1, 3, 6, and 10 personal cycles to show how predictions improve
-across all three model phases.
+Simulates 1, 3, 6, and 10 personal cycles to show how predictions narrow across
+all three model phases.
 
 **`pipeline.py`**
-CLI orchestrator for the ML pipeline. Five commands:
+CLI orchestrator for the ML pipeline:
 - `--setup`   trains the population prior from public data
 - `--predict` generates and stores a next-cycle prediction
 - `--update`  runs after a cycle completes — Bayesian update + LSTM fine-tune
@@ -128,43 +136,48 @@ CLI orchestrator for the ML pipeline. Five commands:
 - `--results` displays stored predictions from the database
 
 **`requirements.txt`**
-All Python dependencies. Key packages: `fastapi` and `uvicorn` for the API
-server, `psycopg2-binary` for PostgreSQL, `scikit-learn`, `scipy`, and
-`xgboost` for the ML pipeline, `pywebview` for the native desktop window.
-`torch` is listed but commented out — it is only needed at Phase 3 (8+ cycles).
+All Python dependencies. Key packages: `fastapi` and `uvicorn` (API server),
+`psycopg2-binary` (PostgreSQL), `scikit-learn`, `scipy`, `xgboost` (ML pipeline),
+`pywebview` (native window), `requests` (ETF data proxy).
+`torch` is commented out — only needed at Phase 3 (8+ cycles).
 
 **`schema.sql`**
-PostgreSQL DDL. Run once to create all tables and the `cycle_summaries` view.
-Contains: `cycles`, `daily_logs`, and `model_runs` tables, and the
-`cycle_summaries` view that aggregates daily logs per completed cycle.
-Apply with: `psql -d period_tracker -f schema.sql`
+PostgreSQL DDL. Creates `cycles`, `daily_logs`, `model_runs`, 'journal_entries' tables and the
+`cycle_summaries` view. Apply with: `psql -d period_tracker -f schema.sql`
 
 **`setup.sh`**
 Automates the entire first-time setup: installs Python deps, applies the
-database schema, creates `.env` from `.env.example`, runs `pipeline.py --setup`
-to train the population prior, and builds the React frontend with `npm run build`.
+database schema, creates `.env`, trains the population prior, and builds
+the React frontend.
 
 ---
 
 ### `api/`
 
 **`api/main.py`**
-FastAPI application. Wraps the Python pipeline and database connector so the
-React frontend can call them over HTTP. In production, also serves the compiled
-React app from `frontend/dist/` so PyWebView only needs to point at one port.
+FastAPI application. Wraps the Python pipeline, database connector, and external
+data sources so the React frontend can reach them all over HTTP.
+In production, also serves the compiled React app from `frontend/dist/`.
 
-| Method | Route                  | Purpose                                          |
-|--------|------------------------|--------------------------------------------------|
-| GET    | `/api/status`          | Model phase, cycles logged, next period estimate |
-| GET    | `/api/cycles`          | All cycles (completed + active)                  |
-| GET    | `/api/cycles/active`   | The current incomplete cycle                     |
-| POST   | `/api/cycles/start`    | Open a new cycle                                 |
-| POST   | `/api/cycles/complete` | Close cycle, Bayesian update, new prediction     |
-| GET    | `/api/logs`            | All daily logs joined with cycle number          |
-| POST   | `/api/logs`            | Insert one daily log row                         |
-| GET    | `/api/predictions`     | Stored model_runs rows                           |
-| POST   | `/api/predict`         | Run prediction and store result                  |
-| GET    | `/api/insights`        | Aggregated data for Insights charts              |
+| Method | Route                    | Purpose                                              |
+|--------|--------------------------|------------------------------------------------------|
+| GET    | `/api/status`            | Model phase, cycles logged, next period estimate     |
+| GET    | `/api/cycles`            | All cycles (completed + active)                      |
+| GET    | `/api/cycles/active`     | The current incomplete cycle                         |
+| POST   | `/api/cycles/start`      | Open a new cycle                                     |
+| POST   | `/api/cycles/complete`   | Close cycle, Bayesian update, new prediction         |
+| GET    | `/api/logs`              | All daily logs joined with cycle number              |
+| POST   | `/api/logs`              | Insert one daily log row                             |
+| GET    | `/api/predictions`       | Stored model_runs rows                               |
+| POST   | `/api/predict`           | Run prediction and store result                      |
+| GET    | `/api/insights`          | Aggregated data for Insights charts                  |
+| GET    | `/api/journal/{date}`    | Fetch journal entry for a given date                 |
+| POST   | `/api/journal`           | Save or update a journal entry (upsert)              |
+| GET    | `/api/etf/{symbol}`      | Proxy Yahoo Finance chart data for an ETF ticker     |
+
+The ETF route accepts a `?range=1wk|1mo|1y` query parameter and maps it to
+Yahoo Finance interval values. It handles CORS, user-agent spoofing, and
+normalises the response to `{ symbol, data, current, prev_close, currency }`.
 
 ---
 
@@ -172,10 +185,17 @@ React app from `frontend/dist/` so PyWebView only needs to point at one port.
 
 **`db/connector.py`**
 All database interaction in one file. Uses raw `psycopg2` with a context-manager
-connection helper. Contains every read and write the app needs: `insert_cycle`,
-`complete_cycle`, `insert_daily_log`, `get_completed_cycles`, `get_active_cycle`,
-`get_all_logs_with_cycle`, `get_model_runs`, `save_model_run`, `get_insights_data`,
-and more. No ORM — plain SQL for transparency and performance.
+connection helper. No ORM — plain SQL for transparency and performance.
+
+Key functions:
+- `insert_cycle` / `complete_cycle` — cycle lifecycle writes
+- `insert_daily_log` — dynamic column builder for daily logs
+- `get_completed_cycles` / `get_active_cycle` / `get_all_cycles_raw` — cycle reads
+- `get_all_logs_with_cycle` — joined logs + cycle number for the Daily Logs tab
+- `get_insights_data` — four aggregation queries in one call for the Insights tab
+- `save_model_run` / `get_model_runs` — prediction audit trail
+- `get_journal_entry` — fetch one journal entry by date, returns None if empty
+- `upsert_journal_entry` — insert or update a journal entry (ON CONFLICT DO UPDATE)
 
 ---
 
@@ -191,17 +211,16 @@ is a positive integer with right-skew overdispersion. Serialised to
 `saved_models/population_prior.json`.
 
 `BayesianPersonalModel` is a conjugate Gamma-Poisson update. Each new personal
-cycle shifts the posterior mean toward your actual pattern. The population prior
-provides the starting parameters. The personal weight grows from 37% at 3 cycles
-to 87% at 7 cycles. Serialised to `saved_models/bayesian_state.json`.
+cycle shifts the posterior mean toward your actual pattern. Personal weight grows
+from 37% at 3 cycles to 87% at 7 cycles. Serialised to
+`saved_models/bayesian_state.json`.
 
 **`models/lstm.py`**
 Two-layer stacked LSTM with Monte Carlo Dropout for uncertainty estimation.
-`LSTMTrainer` handles pre-training on public data sequences and fine-tuning on
+`LSTMTrainer` handles pre-training on public sequences and fine-tuning on
 personal sequences at 0.2x learning rate to prevent catastrophic forgetting.
-Inference runs 100 forward passes with dropout active to produce a full
-predictive distribution (mean and confidence intervals) rather than a point
-estimate. Uses Huber loss (delta=2.0) for robustness to outlier cycle lengths.
+Inference runs 100 stochastic forward passes to produce a full predictive
+distribution. Uses Huber loss (delta=2.0) for robustness to outlier cycles.
 
 ---
 
@@ -209,148 +228,142 @@ estimate. Uses Huber loss (delta=2.0) for robustness to outlier cycle lengths.
 
 **`data/loaders.py`**
 Loads and standardises the two public datasets from local CSV files.
-All network download logic has been removed — files must be placed manually.
 
-`load_fehring()` reads `data/raw/fehring_cycle_data.csv`. Maps the real column
-names (`ClientID`, `LengthofCycle`, `EstimatedDayofOvulation`, `LengthofLutealPhase`,
-`LengthofMenses`, `MeanBleedingIntensity`, `Age`, `BMI`), handles the UTF-8 BOM,
-and rescales `MeanBleedingIntensity` from its 0–15 composite range to a 0–5 flow scale.
+`load_fehring()` — reads `data/raw/fehring_cycle_data.csv`, handles UTF-8 BOM,
+rescales `MeanBleedingIntensity` from 0–15 to 0–5 flow scale.
 
-`load_mcphases()` reads all CSVs from `data/raw/mcphases/`. Infers cycle boundaries
-from phase transitions in `hormones_and_selfreport.csv`, detects ovulation day
-from the LH column peak, merges optional enrichment files (sleep score converted
-to hours, stress score inverted to 1–3 Likert, skin temperature).
+`load_mcphases()` — reads all CSVs from `data/raw/mcphases/`, infers cycle
+boundaries from LH peaks, merges optional wearable enrichment files.
 
-`load_all_public()` combines both datasets.
-
-`irregular_subset()` filters to subjects with cycle std > 7 days or mean >= 30
-days, matching the target user profile of an irregular ~35 day cycle.
+`irregular_subset()` — filters to subjects with cycle std > 7 days or mean >= 30
+days, matching the target user profile.
 
 **`data/preprocessor.py`**
-Converts raw cycle records into feature matrices for each model phase.
-
-`build_cycle_features()` computes rolling statistics per cycle: personal mean,
-std, last-3 mean and std, linear trend, deviation from mean, and irregularity
-flag. These features are used by all three model phases.
-
-`build_sequences()` builds (X, y) numpy arrays with a configurable lookback
-window (default 6 cycles) for LSTM training. Sequences are built per subject
-so no cross-subject contamination occurs.
-
-`fit_scaler()` and `apply_scaler()` handle StandardScaler persistence so the
-same normalisation is applied consistently at training and inference time.
-
-`personal_db_to_features()` converts cycle summary dicts from PostgreSQL into
-the same feature format as the public data, so the LSTM trains on both sources
-without needing separate code paths.
+Converts raw cycle records into feature matrices. Computes rolling statistics
+(personal mean, std, last-3 mean/std, linear trend, deviation, irregularity flag),
+builds LSTM sequences with a 6-cycle lookback, and handles StandardScaler
+persistence for consistent normalisation between training and inference.
 
 ---
 
 ### `frontend/`
 
 **`frontend/index.html`**
-The single HTML page the entire React app lives inside. Contains only a
-`<div id="root">` where React mounts, a link tag for Tabler Icons, and a
-script tag pointing at `src/main.jsx`. Vite uses this as its build entry point
-and injects the compiled JS bundle here automatically.
+HTML entry point. Sets the Press Start 2P pixel font via Google Fonts, Tabler
+Icons via CDN, pink-to-mauve gradient background, tile grid overlay, custom pixel
+heart cursor (default), gold star cursor (text inputs), and pink heart cursor
+(buttons). All three cursors are SVG data URIs — no image files needed.
 
 **`frontend/vite.config.js`**
-Configures Vite with the React plugin for JSX compilation and a dev-server
-proxy that forwards all `/api/*` requests to FastAPI on port 8000. This means
-the frontend code always calls `/api/...` without hardcoding a port — Vite
-handles the routing in development and FastAPI handles it in production.
-The build output goes to `frontend/dist/`.
+Configures Vite with the React plugin and a dev-server proxy that forwards all
+`/api/*` requests to FastAPI on port 8000, so the frontend never hardcodes a port.
 
 **`frontend/package.json`**
-npm manifest. Runtime dependencies: `react`, `react-dom`, and `recharts`
-for the charts. Dev dependencies: `vite` and `@vitejs/plugin-react`.
-No CSS framework — all styling uses inline JavaScript objects defined in
-`theme.js`, keeping the pixel aesthetic consistent without a build step for CSS.
+Runtime dependencies: `react`, `react-dom`, `recharts`. Dev: `vite`,
+`@vitejs/plugin-react`. No CSS framework — all styling is inline JS objects
+from `theme.js`.
 
 ---
 
 ### `frontend/src/`
 
 **`src/main.jsx`**
-Three-line React entry point. Calls `ReactDOM.createRoot()` on the `#root` div
-from `index.html` and renders `<App />` inside `React.StrictMode`. This is the
-file Vite follows from the script tag in `index.html`.
+Three-line React entry point. Mounts `<App />` into `#root`.
 
 **`src/App.jsx`**
-Root component and state orchestrator. Renders the pixel desktop window shell:
-title bar, menu bar, tab bar, and status bar. Manages three pieces of shared
-state — the active cycle object, the status bar data fetched from `/api/status`,
-and a `refreshKey` counter that triggers data reloads across all tabs after any
-mutation. All tab components receive `notify()` for timed notifications and
-`onSaved()` / `onCycleAction()` callbacks that increment `refreshKey`.
+Multi-window pixel desktop shell. Manages three independent windows (Cycle
+Tracker, Journal, ETF Tracker), each with its own open/closed state, position,
+and z-index. Key systems:
+
+- **Left dock** — three pixel SVG icons (house, crescent moon, notebook/chart).
+  Clicking toggles the corresponding window. Home icon closes all windows.
+- **AnimatedWindow** — wrapper that animates open/close using CSS transform +
+  opacity transitions. On open: spring-bounces from the dock icon position to
+  full size. On close: shrinks back toward the dock icon using `transformOrigin`
+  set to the button's screen coordinates.
+- **Single global drag handler** — one `activeDrag` ref shared across all windows.
+  `startDrag(e, pos, setPos)` records the offset; global `mousemove`/`mouseup`
+  listeners update the position. This avoids multiple competing event handlers.
+- **Z-index management** — a monotonic counter `zRef` increments on every focus
+  event so the clicked window always comes to the front.
 
 **`src/api.js`**
-Single file containing every `fetch()` call the app makes. All paths are
-prefixed with `/api`. Throws an `Error` with the server's `detail` message on
-non-2xx responses so components can display meaningful error notifications
-rather than generic failure messages.
+Single file with all `fetch()` calls. All paths prefixed with `/api`. Throws
+an `Error` with the server's `detail` message on non-2xx responses. Methods:
+`getStatus`, `getCycles`, `getActiveCycle`, `startCycle`, `completeCycle`,
+`getLogs`, `saveLog`, `getPredictions`, `runPredict`, `getInsights`,
+`getJournalEntry`, `saveJournalEntry`, `getETF`.
 
 **`src/theme.js`**
-Design token file shared by every component. Exports the full colour palette
-object (`C`), the font constant, bevel shadow strings (`RAISED` for protruding
-buttons, `SUNKEN` for input wells), and shared table cell and header style
-objects (`TD`, `TH`). Changing a colour here updates the entire app.
+Design token file. Exports the full colour palette (`C`), font constant,
+bevel shadow strings (`RAISED`, `SUNKEN`), font size scale (`SIZE`), and shared
+table cell/header style objects (`TD`, `TH`). Changing a colour here updates
+the entire app.
 
 **`src/components/Shared.jsx`**
-Reusable pixel-aesthetic UI primitives used across all five tabs: `Label`,
-`Inp` (text and number input), `Sel` (dropdown), `CheckRow`, `RadioRow`,
-`GroupBox` (styled fieldset), `PixelBtn`, `StatCard`, `PhaseTag`,
-`Notification` (timed floating banner), `LoadingRow`, `EmptyRow`, and
-`PhaseProgress` (the three-phase progress bar with cycle count). Centralising
-these means future theme changes need edits in one place only.
+Reusable pixel UI primitives: `Label`, `SectionLabel`, `Inp`, `Sel`,
+`CheckRow`, `RadioRow`, `GroupBox`, `PixelBtn`, `StatCard`, `PhaseTag`,
+`Notification`, `LoadingRow`, `EmptyRow`, `PhaseProgress`.
 
 **`src/components/LogTab.jsx`**
-The main daily entry form. Twelve fields: date, flow intensity (0–5), cervical
-mucus type, weight (kg), exercise minutes, sleep hours, sleep quality (radio),
-stress level (radio), eight mood checkboxes, and nine symptom checkboxes.
-On save, automatically calculates `day_of_cycle` from the active cycle's start
-date, posts to `POST /api/logs`, shows a success or error notification,
-and resets the form while keeping the current date.
+Daily entry form. Fields: date, flow intensity (0–5), cervical mucus type,
+weight, exercise, sleep hours, sleep quality, stress level, eight mood
+checkboxes, nine symptom checkboxes. Calculates `day_of_cycle` automatically
+from the active cycle start date before posting to `POST /api/logs`.
 
 **`src/components/CyclesTab.jsx`**
-Cycle lifecycle management. If an active cycle exists, shows the active cycle
-panel with start date, days elapsed, and a date picker to mark the cycle
-complete. Validates the end date is between 15 and 60 days after the start
-before calling `POST /api/cycles/complete`. The API response includes the new
-prediction which is shown in the success notification. If no active cycle
-exists, shows a form to start a new one. Also renders the phase progress bar,
-four summary stat cards, and the full cycles table.
+Cycle lifecycle management. Active cycle panel shows start date, days elapsed,
+and an end-date picker to mark the cycle complete (validates 15–60 day range).
+Completion calls `POST /api/cycles/complete` which triggers the Bayesian update
+and returns the new prediction shown in the success notification. Also shows the
+phase progress bar, four stat cards, and the full cycles table.
 
 **`src/components/LogsTab.jsx`**
-Scrollable table of all daily logs from `GET /api/logs`. A filter input
-searches across date, cycle number, mucus type, and moods client-side.
-Symptom columns use tick and dash indicators. Flow intensity is colour-coded
-red when above 3. Shows up to 300 rows by default.
+Scrollable table of all daily logs. Client-side filter searches date, cycle
+number, mucus type, and moods. Symptom columns use ✓/— indicators. Flow
+intensity colour-coded red above 3. Default limit 300 rows.
 
 **`src/components/ResultsTab.jsx`**
-Displays stored predictions from `GET /api/predictions` as cards, newest first.
-Each card shows the model phase tag, personal cycle count, next cycle length
-estimate, 80% confidence interval, next period date, ovulation estimate,
-fertile window, and CI width in days. Includes a run-prediction control where
-you enter today's cycle day number and click RUN to call `POST /api/predict`.
+Stored predictions from `GET /api/predictions` displayed as cards, newest first.
+Each card shows model phase tag, personal cycle count, next length estimate,
+80% CI, next period date, ovulation estimate, fertile window, and CI width.
+Includes a collapsible model explanation panel that explains all three model
+phases, what each prediction field means, what features the model uses, and how
+to interpret the evaluation metrics (MAE, CI width, personal weight %).
 
 **`src/components/InsightsTab.jsx`**
-Four live Recharts visualisations built from data at `GET /api/insights`:
+Four Recharts visualisations: CI width trend, cycle length history with sleep
+overlay, symptom frequency (horizontal bar), and mood frequency. Six insight
+callout cards below the charts summarise top symptom, top mood, average sleep,
+average stress, phase progress, and prediction count.
 
-1. CI width over time (bar chart) — shows the model becoming more precise with
-   each prediction. A dashed red line marks the 8-day Bayesian phase target.
+**`src/components/JournalWindow.jsx`**
+Personal daily journal as a floating window. Features: pixel-art title bar,
+◄ / ► navigation buttons to move one day back or forward, a date-picker for
+jumping to any past date, six weather emoji buttons (single-select), and a
+notebook-style textarea with pink ruled lines and a red left-margin line.
+Loads the entry for the current date on mount and on every date change via
+`GET /api/journal/{date}`. Saves via `POST /api/journal` (upsert). Shows
+the last-saved timestamp in the footer. Error messages display the exact failure
+reason (table not found, DB not connected, etc.) in a full-width banner that
+stays visible for 8 seconds. Entries are stored in PostgreSQL with TOAST
+compression — 10 years of daily entries use under 10 MB.
 
-2. Cycle length history (composed chart) — actual lengths as bars with average
-   sleep as a dashed line overlay, showing the two signals side by side.
+**`src/components/ETFWindow.jsx`**
+Islamic ETF tracker showing live price charts for two funds:
 
-3. Symptom frequency (horizontal bar chart) — total days each symptom was logged
-   across all cycles, sorted by frequency.
+| Ticker   | Fund                                               | Type     |
+|----------|----------------------------------------------------|----------|
+| ISWD.SW  | iShares MSCI World Islamic UCITS ETF               | USD Dist |
+| IGDA.L   | Invesco Dow Jones Islamic Global Developed Markets | USD Acc  |
 
-4. Mood frequency (bar chart) — most common moods across all logged days.
-
-Below the charts, six insight callout cards show: top symptom, top mood,
-average sleep, average stress, progress toward the next model phase, and total
-predictions stored.
+Three time ranges: 1W (1-hour bars), 1M (daily bars), 1Y (daily bars). Each
+chart shows a reference line at the previous close, and a footer with range
+high/low, exchange name, and data point count. Auto-refreshes every 5 minutes.
+Data is fetched via the FastAPI proxy at `GET /api/etf/{symbol}?range=` which
+calls the Yahoo Finance v8 chart API and normalises the response — the browser
+never contacts Yahoo Finance directly (avoids CORS). Data is delayed 15–20
+minutes for LSE and SIX listings.
 
 ---
 
@@ -367,13 +380,18 @@ predictions stored.
 ```bash
 cd cycle_tracker_app
 
-# Edit .env and set: DB_URL=postgresql://user:password@localhost:5432/period_tracker
+# Copy and edit the environment file
+cp .env.example .env
+# Set: DB_URL=postgresql://user:password@localhost:5432/period_tracker
 
-# Create the database if it does not exist yet
+# Create the database
 createdb period_tracker
 
 # Automated setup (installs deps, schema, trains prior, builds frontend)
 bash setup.sh
+
+# Run the journal migration (separate from main schema)
+psql -d period_tracker -f journal_migration.sql
 ```
 
 ### Manual setup (step by step)
@@ -382,10 +400,13 @@ bash setup.sh
 # 1. Python dependencies
 pip install -r requirements.txt
 
-# 2. Database schema
+# 2. Main database schema
 psql -d period_tracker -f schema.sql
 
-# 3. Public data — optional but strongly recommended
+# 3. Journal table
+psql -d period_tracker -f journal_migration.sql
+
+# 4. Public data — optional but recommended
 #    Fehring/Marquette 2012:
 #      https://epublications.marquette.edu/data_nfp/7/
 #      Save as  data/raw/fehring_cycle_data.csv
@@ -394,10 +415,10 @@ psql -d period_tracker -f schema.sql
 #      https://physionet.org/content/mcphases/1.0.0/
 #      Save all CSVs flat in  data/raw/mcphases/
 
-# 4. Train population prior
+# 5. Train population prior
 python pipeline.py --setup
 
-# 5. Build the React frontend
+# 6. Build the React frontend
 cd frontend
 npm install
 npm run build
@@ -412,48 +433,46 @@ cd ..
 python app.py
 ```
 
-Opens a native desktop window at 780x800 px. FastAPI runs on port 8000
-internally. You do not need to open a browser.
+Opens a native desktop window. FastAPI runs on port 8000 internally.
+You do not need to open a browser separately.
 
 ---
 
 ## Development mode
 
-Three terminals for hot-reload on both frontend and backend simultaneously:
-
 ```bash
-# Terminal 1 — FastAPI with auto-reload on Python file changes
+# Terminal 1 — FastAPI with auto-reload
 uvicorn api.main:app --reload --port 8000
 
 # Terminal 2 — Vite dev server with hot module replacement
 cd frontend && npm run dev
 
-# Terminal 3 — PyWebView pointed at Vite (port 5173)
+# Terminal 3 — PyWebView pointed at Vite
 python app.py --dev
 ```
 
-The Vite proxy forwards `/api/*` to FastAPI automatically. You can also test
-API routes directly at `http://localhost:8000/docs` (Swagger UI).
+The Vite proxy forwards `/api/*` to FastAPI automatically. Test API routes
+directly at `http://localhost:8000/docs` (Swagger UI).
 
 ---
 
 ## CLI reference
 
 ```bash
-# Train population prior from public data — run once after setup
+# Train population prior — run once after setup
 python pipeline.py --setup
 
 # Generate and store a prediction
 python pipeline.py --predict
-python pipeline.py --predict --day 14        # --day = today's cycle day
+python pipeline.py --predict --day 14
 
-# Update model after a new cycle completes
+# Update model after a cycle completes
 python pipeline.py --update --cycle-number 3
 
 # Show current phase and cycle count
 python pipeline.py --status
 
-# View stored predictions in the terminal
+# View stored predictions
 python pipeline.py --results
 python pipeline.py --results --limit 20
 
@@ -468,39 +487,46 @@ python app.py --api-only
 
 ## Model phases
 
-| Phase | Cycles logged | Model | Typical CI |
+| Phase | Cycles | Model | Typical CI |
 |---|---|---|---|
-| `cold_start` | 0 – 2 | Negative Binomial fitted to irregular-cycle subjects from Fehring and mcPHASES public datasets. GradientBoosting regressor for covariate adjustment. | ±10–14 days |
-| `bayesian` | 3 – 7 | Conjugate Gamma-Poisson update. Each new cycle shifts the posterior toward your personal pattern. Blended with the population prior — personal weight grows from 37% at 3 cycles to 87% at 7 cycles. | ±4–7 days |
-| `lstm` | 8+ | Two-layer LSTM pre-trained on public data, fine-tuned on personal sequences at 0.2x learning rate. Monte Carlo Dropout (100 passes) gives calibrated uncertainty estimates. 6-cycle lookback window. | ±2–4 days |
+| `cold_start` | 0–2 | Negative Binomial on irregular-cycle subjects from Fehring and mcPHASES. GradientBoosting for covariate adjustment. | ±10–14 days |
+| `bayesian` | 3–7 | Conjugate Gamma-Poisson update. Personal weight grows from 37% at 3 cycles to 87% at 7 cycles. | ±4–7 days |
+| `lstm` | 8+ | Two-layer LSTM pre-trained on public data, fine-tuned at 0.2x LR. MC Dropout (100 passes) for uncertainty. 6-cycle lookback. | ±2–4 days |
 
 ---
 
 ## Database schema
 
-Three tables and one view. Apply with `psql -d period_tracker -f schema.sql`.
+Four tables and one view. `schema.sql` creates the first three; `journal_migration.sql` adds the fourth.
 
-**`cycles`** — one row per menstrual cycle. The `cycle_length` and
-`period_duration` columns are generated automatically from the start and end
-dates so they never go out of sync.
+**`cycles`** — one row per menstrual cycle. `cycle_length` and `period_duration`
+are generated columns (computed from dates, never go out of sync).
 
-**`daily_logs`** — one row per day. Stores: flow intensity (0–5), cervical
-mucus type, moods as a `TEXT[]` array, nine boolean symptom flags, sleep hours,
-sleep quality (1–3), stress level (1–3), weight in kg, and exercise minutes.
+**`daily_logs`** — one row per day. Flow intensity (0–5), cervical mucus type,
+moods as `TEXT[]`, nine boolean symptom flags, sleep hours, sleep quality (1–3),
+stress level (1–3), weight in kg, exercise minutes.
 
-**`model_runs`** — audit trail of every prediction. Stores the full predictions
-`JSONB`, model phase string, and personal cycle count at the time of the run.
-This table feeds the Results tab and the CI-width chart in Insights.
+**`journal_entries`** — one row per calendar day. `entry_date` has a UNIQUE
+constraint. `weather` (VARCHAR 30) and `content` (TEXT, TOAST-compressed).
+`updated_at` is refreshed on every upsert.
+
+**`model_runs`** — audit trail. Every prediction stored with full `JSONB`
+payload, model phase string, and personal cycle count at the time of the run.
 
 **`cycle_summaries`** (view) — joins `cycles` and `daily_logs` to produce one
-aggregate row per completed cycle: average flow, sleep, and stress; total days
-with each symptom; and dominant mood from the moods array.
+aggregate row per completed cycle: average flow, sleep, stress; total days with
+each symptom; dominant mood.
 
 ---
 
 ## Privacy
 
-All data is stored locally in your PostgreSQL instance.
-Nothing is sent to any external server at any point.
-The public datasets (Fehring, mcPHASES) are used only during `--setup` to
-initialise model weights and are not consulted again after that.
+All personal data (cycles, logs, journal entries) is stored locally in your
+PostgreSQL instance. Nothing is sent to any external server.
+
+The one exception is the ETF Tracker: live price data is fetched from Yahoo
+Finance via the FastAPI proxy. No personal data is included in those requests —
+they only ask for publicly available market prices by ticker symbol.
+
+The public datasets (Fehring, mcPHASES) are used only during `--setup` and are
+not consulted again after that.
