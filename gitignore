@@ -33,6 +33,7 @@ ENV/
 # ── Frontend build output ─────────────────────────────────────────────────────
 frontend/node_modules/      # reinstall with: cd frontend && npm install
 frontend/dist/              # rebuild with: cd frontend && npm run build
+frontend/package-lock.json       # regenerate with: cd frontend && npm install
 
 # ── OS & editor files ─────────────────────────────────────────────────────────
 .DS_Store
