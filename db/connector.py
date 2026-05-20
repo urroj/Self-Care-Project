@@ -184,19 +184,31 @@ def insert_daily_log(
         "exercise_mins", "lh_tested", "lh_positive",
     }
     data = {k: v for k, v in kwargs.items() if k in allowed}
-    cols = ["cycle_id", "log_date", "day_of_cycle"] + list(data.keys())
-    vals = [cycle_id, log_date, day_of_cycle] + list(data.values())
 
-    placeholders = ", ".join(["%s"] * len(vals))
-    col_str      = ", ".join(cols)
-    _execute(
-        f"""
-        INSERT INTO daily_logs ({col_str})
-        VALUES ({placeholders})
-        ON CONFLICT (cycle_id, log_date) DO NOTHING
-        """,
-        tuple(vals)
+    # Check if any log already exists for this date (regardless of cycle_id).
+    # SQL-inserted logs may carry a different cycle_id, so we match on log_date alone.
+    existing = _fetch(
+        "SELECT id FROM daily_logs WHERE log_date = %s LIMIT 1",
+        (log_date,)
     )
+
+    if existing:
+        # UPDATE the existing row so SQL-inserted logs are overwritten correctly
+        # and no duplicate row is created.
+        update_fields = {"cycle_id": cycle_id, "day_of_cycle": day_of_cycle, **data}
+        sets = ", ".join(f"{col} = %s" for col in update_fields)
+        _execute(
+            f"UPDATE daily_logs SET {sets} WHERE log_date = %s",
+            (*update_fields.values(), log_date)
+        )
+    else:
+        cols = ["cycle_id", "log_date", "day_of_cycle"] + list(data.keys())
+        vals = [cycle_id, log_date, day_of_cycle] + list(data.values())
+        placeholders = ", ".join(["%s"] * len(vals))
+        _execute(
+            f"INSERT INTO daily_logs ({', '.join(cols)}) VALUES ({placeholders})",
+            tuple(vals)
+        )
 
 
 
@@ -291,6 +303,32 @@ def get_insights_data() -> dict:
     }
 
 
+
+
+def update_cycle_dates(
+    cycle_id: str,
+    period_end: "date | None" = None,
+    ovulation_date: "date | None" = None,
+) -> None:
+    """Update period_end and/or ovulation_date on an active cycle."""
+    sets = []
+    vals = []
+    if period_end is not None:
+        sets.append("period_end = %s")
+        vals.append(period_end)
+    if ovulation_date is not None:
+        sets.append("ovulation_date = %s")
+        vals.append(ovulation_date)
+    if not sets:
+        return
+    sets.append("updated_at = NOW()")
+    vals.append(cycle_id)
+    _execute(
+        f"UPDATE cycles SET {', '.join(sets)} WHERE id = %s",
+        tuple(vals)
+    )
+
+
 def save_model_run(
     model_phase: str,
     personal_cycles: int,
@@ -315,7 +353,7 @@ def save_model_run(
     )
 
 # ── Journal entries ───────────────────────────────────────────────────────────
-
+ 
 def get_journal_entry(entry_date: str) -> dict | None:
     """Return a single journal entry by date, or None if no entry exists."""
     rows = _fetch(
@@ -328,8 +366,8 @@ def get_journal_entry(entry_date: str) -> dict | None:
         (entry_date,)
     )
     return rows[0] if rows else None
-
-
+ 
+ 
 def upsert_journal_entry(entry_date: str, weather: str = "", content: str = "") -> None:
     """Insert or update a journal entry. One row per calendar day."""
     _execute(
@@ -342,4 +380,100 @@ def upsert_journal_entry(entry_date: str, weather: str = "", content: str = "") 
             updated_at = NOW()
         """,
         (entry_date, weather, content)
+    )
+ 
+def get_habits(habit_date: str) -> dict | None:
+    rows = _fetch(
+        """
+        SELECT habit_date::text, water_glasses,
+               prayer_fajr, prayer_zuhr, prayer_asr, prayer_maghrib, prayer_isha,
+               quran_recited, todos, project_ideas,
+               to_char(updated_at, 'YYYY-MM-DD HH24:MI') AS last_saved
+        FROM daily_habits
+        WHERE habit_date = %s::date
+        """,
+        (habit_date,)
+    )
+    return rows[0] if rows else None
+
+
+def upsert_habits(
+    habit_date:     str,
+    water_glasses:  int  = 0,
+    prayer_fajr:    bool = False,
+    prayer_zuhr:    bool = False,
+    prayer_asr:     bool = False,
+    prayer_maghrib: bool = False,
+    prayer_isha:    bool = False,
+    quran_recited:  bool = False,
+    todos:          list | None = None,
+    project_ideas:  list | None = None,
+) -> None:
+    _execute(
+        """
+        INSERT INTO daily_habits
+            (habit_date, water_glasses, prayer_fajr, prayer_zuhr, prayer_asr,
+             prayer_maghrib, prayer_isha, quran_recited, todos, project_ideas)
+        VALUES (%s::date, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (habit_date) DO UPDATE SET
+            water_glasses  = EXCLUDED.water_glasses,
+            prayer_fajr    = EXCLUDED.prayer_fajr,
+            prayer_zuhr    = EXCLUDED.prayer_zuhr,
+            prayer_asr     = EXCLUDED.prayer_asr,
+            prayer_maghrib = EXCLUDED.prayer_maghrib,
+            prayer_isha    = EXCLUDED.prayer_isha,
+            quran_recited  = EXCLUDED.quran_recited,
+            todos          = EXCLUDED.todos,
+            project_ideas  = EXCLUDED.project_ideas,
+            updated_at     = NOW()
+        """,
+        (
+            habit_date, water_glasses,
+            prayer_fajr, prayer_zuhr, prayer_asr, prayer_maghrib, prayer_isha,
+            quran_recited,
+            psycopg2.extras.Json(todos or []),
+            list(project_ideas) if project_ideas else [],
+        )
+    )
+    
+# ── ETF investments ───────────────────────────────────────────────────────────
+
+def get_etf_investments(symbol: str) -> list[dict]:
+    """Return all investment entries for a symbol, newest first."""
+    return _fetch(
+        """
+        SELECT id::text, symbol, amount::float, investment_date::text,
+               price_on_date::float, units::float, notes, created_at::text
+        FROM etf_investments
+        WHERE symbol = %s
+        ORDER BY investment_date DESC
+        """,
+        (symbol,)
+    )
+
+
+def add_etf_investment(
+    symbol: str,
+    amount: float,
+    investment_date: str,
+    price_on_date: float,
+    notes: str = "",
+) -> str:
+    """Insert a new investment entry, return its UUID."""
+    rows = _fetch(
+        """
+        INSERT INTO etf_investments (symbol, amount, investment_date, price_on_date, notes)
+        VALUES (%s, %s, %s::date, %s, %s)
+        RETURNING id::text
+        """,
+        (symbol, amount, investment_date, price_on_date, notes)
+    )
+    return rows[0]["id"]
+
+
+def delete_etf_investment(investment_id: str) -> None:
+    """Remove an investment entry by UUID."""
+    _execute(
+        "DELETE FROM etf_investments WHERE id = %s",
+        (investment_id,)
     )

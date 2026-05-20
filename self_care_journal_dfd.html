@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Self Care Journal — Data Flow Diagram</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --pink:   #FFD6E5; --rose:  #E87090; --deep:  #C4506A;
+  --maroon: #7A1A38; --dark:  #3A0018; --mut:   #9A4060;
+  --green:  #5A8E72; --sage:  #82ABA1; --gold:  #C8A000;
+  --cream:  #FFF5F8; --r1:    #FFF5F8; --r2:    #FFE8F0;
+  --face:   #F090A8; --grd:   #E8A0B8; --sh:    #5A0020;
+  --blue:   #4A7A9B; --lblue: #A8C8E0;
+  --purple: #7A3A9A; --lpurp: #D4B0F0;
+  --orange: #C47030; --lorange:#F4C870;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+
+body {
+  background: linear-gradient(150deg,#FFD0E8 0%,#F4A8D0 18%,#E888BC 38%,#D870A8 58%,#C86098 78%,#B85088 100%);
+  background-attachment: fixed;
+  font-family: 'DM Mono', monospace;
+  color: var(--dark);
+  min-height: 100vh;
+  padding: 40px 24px 80px;
+  position: relative;
+}
+body::before {
+  content:''; position:fixed; inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.08) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,0.08) 1px,transparent 1px);
+  background-size: 44px 44px;
+  pointer-events: none; z-index:0;
+}
+
+.page { position:relative; z-index:1; max-width:1200px; margin:0 auto; }
+
+.page-title {
+  font-family:'Press Start 2P',monospace; font-size:13px;
+  color:#fff; text-shadow:2px 2px 0 var(--maroon);
+  letter-spacing:.06em; margin-bottom:4px;
+}
+.page-sub { font-size:10px; color:rgba(255,255,255,0.75); letter-spacing:.04em; margin-bottom:40px; }
+
+.panel {
+  background:rgba(255,245,248,0.90); backdrop-filter:blur(12px);
+  border:2px solid var(--maroon);
+  box-shadow:4px 4px 0 var(--sh), 0 12px 40px rgba(90,0,32,0.20);
+  margin-bottom:32px; overflow:hidden;
+}
+.panel-header {
+  background:var(--deep); padding:8px 16px;
+  display:flex; align-items:center; gap:10px;
+}
+.panel-title { font-family:'Press Start 2P',monospace; font-size:9px; color:#fff; letter-spacing:.08em; }
+.panel-body  { padding:28px 24px; }
+
+/* ── DFD canvas ── */
+.dfd-canvas {
+  position: relative;
+  width: 100%;
+  min-height: 900px;
+  overflow: hidden;
+}
+.dfd-canvas svg {
+  position: absolute; top:0; left:0; width:100%; height:100%;
+}
+
+/* ── Node styles (HTML overlays positioned absolutely) ── */
+.node {
+  position: absolute;
+  display: flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align: center;
+  gap: 4px;
+  transform: translate(-50%, -50%);
+  cursor: default;
+  transition: filter 0.15s;
+}
+.node:hover { filter: brightness(1.08); z-index:10; }
+
+/* External entity — double-bordered rectangle */
+.ext {
+  border: 2px solid; padding: 10px 14px; min-width: 100px;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 3px 3px 0 var(--sh);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6.5px; letter-spacing:.04em; line-height:1.8;
+  position: relative;
+}
+.ext::before {
+  content:''; position:absolute; inset:3px;
+  border:1.5px solid; border-color:inherit; pointer-events:none;
+}
+
+/* Process — rounded rectangle (pill) */
+.proc {
+  border: 2px solid; padding: 10px 16px; min-width: 120px;
+  border-radius: 24px; background: rgba(255,255,255,0.92);
+  box-shadow: 3px 3px 0 var(--sh);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6.5px; letter-spacing:.04em; line-height:1.8;
+}
+
+/* Data store — open rectangle (two horizontal lines) */
+.store {
+  border-top: 2px solid; border-bottom: 2px solid;
+  border-left: none; border-right: none;
+  padding: 8px 16px; min-width: 130px;
+  background: rgba(255,255,255,0.85);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6.5px; letter-spacing:.04em; line-height:1.8;
+}
+.store-label {
+  font-size: 5.5px; letter-spacing:.06em; opacity:.7; display:block; margin-bottom:2px;
+}
+
+/* Flow label on arrow */
+.flow-label-tag {
+  position: absolute;
+  background: rgba(255,245,248,0.92);
+  border: 1px solid var(--grd);
+  font-size: 7.5px; padding: 2px 6px;
+  color: var(--dark);
+  pointer-events: none;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  box-shadow: 1px 1px 0 rgba(90,0,32,0.15);
+}
+
+/* Legend */
+.legend-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 16px;
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--grd);
+}
+.legend-row { display:flex; align-items:center; gap:10px; font-size:9px; color:var(--mut); }
+.leg-ext  { width:28px;height:16px;border:2px solid var(--maroon);background:rgba(255,255,255,0.9);flex-shrink:0;position:relative; }
+.leg-ext::before{content:'';position:absolute;inset:2px;border:1px solid var(--maroon);}
+.leg-proc { width:28px;height:16px;border:2px solid var(--blue);border-radius:8px;background:rgba(255,255,255,0.9);flex-shrink:0; }
+.leg-store{ width:28px;height:16px;border-top:2px solid var(--green);border-bottom:2px solid var(--green);background:rgba(255,255,255,0.9);flex-shrink:0; }
+.leg-arrow{ width:28px;height:2px;background:var(--mut);position:relative;flex-shrink:0;align-self:center; }
+.leg-arrow::after{content:'▶';position:absolute;right:-6px;top:-5px;font-size:7px;color:var(--mut);}
+
+/* Level 0 title */
+.level-title {
+  font-family:'Press Start 2P',monospace; font-size:7px;
+  color:var(--mut); letter-spacing:.06em;
+  margin-bottom:16px; padding-bottom:8px;
+  border-bottom:1px solid var(--grd);
+  display:flex; align-items:center; gap:10px;
+}
+
+/* Colour scheme per subsystem */
+.c-user    { color:var(--maroon); border-color:var(--maroon); }
+.c-react   { color:#2A5A8A;       border-color:#4A7A9B; }
+.c-fastapi { color:#2A6A42;       border-color:#3A8A52; }
+.c-db      { color:#6A4010;       border-color:#8A6030; }
+.c-yahoo   { color:#5A1A8A;       border-color:#7A3AAA; }
+.c-ml      { color:#2A4A8A;       border-color:#4A6AAA; }
+.c-journal { color:#8A5010;       border-color:#AA7030; }
+.c-etf     { color:#5A1A8A;       border-color:#7A3AAA; }
+
+/* ── Level 1: subsection panels ── */
+.subsys-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 24px;
+}
+.subsys {
+  border: 2px solid; padding: 16px;
+  position: relative;
+}
+.subsys-name {
+  position: absolute; top:-10px; left:10px;
+  background: var(--cream);
+  font-family:'Press Start 2P',monospace; font-size:6px;
+  padding:2px 8px; letter-spacing:.06em;
+}
+.flow-table { width:100%; border-collapse:collapse; font-size:9px; margin-top:8px; }
+.flow-table td { padding:5px 8px; border-bottom:1px solid var(--grd); vertical-align:top; }
+.flow-table tr:last-child td { border-bottom:none; }
+.flow-from { color:var(--mut); font-size:8px; white-space:nowrap; }
+.flow-arrow-cell { color:var(--mut); font-size:11px; padding:5px 4px; }
+.flow-to   { color:var(--dark); font-weight:500; font-size:8px; white-space:nowrap; }
+.flow-data { color:var(--mut); font-size:7.5px; font-style:italic; }
+.store-tag {
+  display:inline-block; font-family:'Press Start 2P',monospace; font-size:5.5px;
+  padding:1px 5px; margin-left:4px; vertical-align:middle;
+  background:rgba(200,240,220,0.6); border:1px solid var(--green); color:var(--green);
+}
+.proc-tag {
+  display:inline-block; font-family:'Press Start 2P',monospace; font-size:5.5px;
+  padding:1px 5px; margin-left:4px; vertical-align:middle;
+  background:rgba(200,220,240,0.6); border:1px solid var(--blue); color:var(--blue);
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="page-title">★ SELF CARE JOURNAL — DATA FLOW DIAGRAM ★</div>
+<div class="page-sub">Level 0 (Context) + Level 1 (Subsystem) + Level 2 (Detailed flows per module)</div>
+
+<!-- ══════════════════════════════════════════════════════
+     LEVEL 0 — CONTEXT DIAGRAM
+══════════════════════════════════════════════════════ -->
+<div class="panel">
+  <div class="panel-header">
+    <div class="panel-title">LEVEL 0 — CONTEXT DIAGRAM (SYSTEM BOUNDARY)</div>
+  </div>
+  <div class="panel-body">
+    <div class="level-title">
+      <span>THE SYSTEM AS A SINGLE PROCESS — ALL EXTERNAL ENTITIES AND THEIR DATA EXCHANGES</span>
+    </div>
+
+    <div class="dfd-canvas" style="min-height:520px;">
+      <svg id="svg0" xmlns="http://www.w3.org/2000/svg"></svg>
+
+      <!-- External: User -->
+      <div class="node ext c-user" style="left:10%;top:48%;" id="n-user">
+        <span>👤</span>
+        <span>USER</span>
+      </div>
+
+      <!-- Central process -->
+      <div class="node proc c-react" style="left:50%;top:48%;min-width:160px;padding:16px 20px;border-radius:30px;border-width:3px;" id="n-sys">
+        <span style="font-size:8px;margin-bottom:4px;">SELF CARE</span>
+        <span style="font-size:8px;">JOURNAL</span>
+        <span style="font-size:6px;color:var(--mut);margin-top:4px;">FastAPI + React + PostgreSQL</span>
+      </div>
+
+      <!-- External: Yahoo Finance -->
+      <div class="node ext c-yahoo" style="left:88%;top:25%;" id="n-yahoo">
+        <span>📈</span>
+        <span>YAHOO</span>
+        <span>FINANCE</span>
+      </div>
+
+      <!-- External: Public Datasets -->
+      <div class="node ext c-ml" style="left:88%;top:72%;" id="n-pub">
+        <span>📊</span>
+        <span>PUBLIC</span>
+        <span>DATASETS</span>
+        <span style="font-size:5px;opacity:.7;">(Fehring, mcPHASES)</span>
+      </div>
+
+      <!-- Arrows via SVG -->
+    </div>
+
+    <!-- Context flow table (cleaner than SVG arrows for dense data) -->
+    <table class="flow-table" style="margin-top:0;">
+      <tr style="background:var(--r2);">
+        <td style="font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 8px;color:var(--mut);">FROM</td>
+        <td style="font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 4px;color:var(--mut);">→</td>
+        <td style="font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 8px;color:var(--mut);">TO</td>
+        <td style="font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 8px;color:var(--mut);">DATA FLOW</td>
+      </tr>
+      <tr>
+        <td class="flow-from">👤 User</td>
+        <td class="flow-arrow-cell">→</td>
+        <td class="flow-to">⬡ System</td>
+        <td class="flow-data">cycle dates, daily logs (flow/mood/symptoms/sleep/stress), journal entries (text + weather), ETF investment amounts + purchase dates, UI interactions (tab clicks, date navigation)</td>
+      </tr>
+      <tr>
+        <td class="flow-from">⬡ System</td>
+        <td class="flow-arrow-cell">→</td>
+        <td class="flow-to">👤 User</td>
+        <td class="flow-data">next period prediction, fertile window estimate, CI width, cycle history charts, symptom trends, mood patterns, journal content retrieved, ETF price charts, portfolio value + gain/loss, confirmation prompts on duplicate data</td>
+      </tr>
+      <tr>
+        <td class="flow-from">📈 Yahoo Finance</td>
+        <td class="flow-arrow-cell">→</td>
+        <td class="flow-to">⬡ System</td>
+        <td class="flow-data">OHLCV time-series (timestamps[], closes[], opens[]), regularMarketPrice, previousClose, currency, exchangeName — for both live chart display and historical price lookup on investment date</td>
+      </tr>
+      <tr>
+        <td class="flow-from">📊 Public Datasets</td>
+        <td class="flow-arrow-cell">→</td>
+        <td class="flow-to">⬡ System</td>
+        <td class="flow-data">Fehring/Marquette CSV (ClientID, LengthofCycle, EstimatedDayofOvulation, LengthofLutealPhase, LengthofMenses, MeanBleedingIntensity, Age, BMI) · mcPHASES CSVs (hormones_and_selfreport, subject-info, resting_heart_rate, sleep_score, stress_score, computed_temperature) — used once during --setup to train the population prior</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     LEVEL 1 — SUBSYSTEM DFD
+══════════════════════════════════════════════════════ -->
+<div class="panel">
+  <div class="panel-header">
+    <div class="panel-title">LEVEL 1 — SUBSYSTEM DATA FLOWS</div>
+  </div>
+  <div class="panel-body">
+    <div class="level-title">FOUR MAJOR PROCESSES AND THEIR DATA STORES</div>
+
+    <div class="dfd-canvas" style="min-height:700px; border:1px solid var(--grd); background:rgba(255,248,252,0.5);">
+      <svg id="svg1" xmlns="http://www.w3.org/2000/svg"></svg>
+
+      <!-- ── PROCESSES ── -->
+      <!-- P1: Cycle Tracking -->
+      <div class="node proc c-react" style="left:28%;top:22%;" id="p1">
+        <span>P1</span>
+        <span>CYCLE TRACKER</span>
+      </div>
+      <!-- P2: ML Pipeline -->
+      <div class="node proc c-ml" style="left:72%;top:22%;" id="p2">
+        <span>P2</span>
+        <span>ML PIPELINE</span>
+      </div>
+      <!-- P3: Journal -->
+      <div class="node proc c-journal" style="left:28%;top:72%;" id="p3">
+        <span>P3</span>
+        <span>JOURNAL</span>
+      </div>
+      <!-- P4: ETF Tracker -->
+      <div class="node proc c-etf" style="left:72%;top:72%;" id="p4">
+        <span>P4</span>
+        <span>ETF TRACKER</span>
+      </div>
+
+      <!-- ── DATA STORES ── -->
+      <!-- D1: cycles -->
+      <div class="node store c-db" style="left:50%;top:10%;">
+        <span class="store-label">D1</span>
+        <span>cycles</span>
+      </div>
+      <!-- D2: daily_logs -->
+      <div class="node store c-db" style="left:10%;top:47%;">
+        <span class="store-label">D2</span>
+        <span>daily_logs</span>
+      </div>
+      <!-- D3: model_runs -->
+      <div class="node store c-db" style="left:90%;top:47%;">
+        <span class="store-label">D3</span>
+        <span>model_runs</span>
+      </div>
+      <!-- D4: journal_entries -->
+      <div class="node store c-db" style="left:10%;top:85%;">
+        <span class="store-label">D4</span>
+        <span>journal_entries</span>
+      </div>
+      <!-- D5: etf_investments -->
+      <div class="node store c-db" style="left:90%;top:85%;">
+        <span class="store-label">D5</span>
+        <span>etf_investments</span>
+      </div>
+      <!-- D6: saved_models -->
+      <div class="node store c-ml" style="left:50%;top:47%;">
+        <span class="store-label">D6</span>
+        <span>saved_models/</span>
+      </div>
+
+      <!-- ── EXTERNAL ── -->
+      <div class="node ext c-user" style="left:50%;top:92%;" id="e-user">
+        <span>👤 USER</span>
+      </div>
+      <div class="node ext c-yahoo" style="left:93%;top:63%;" id="e-yahoo">
+        <span>📈 YAHOO</span>
+      </div>
+      <div class="node ext c-ml" style="left:93%;top:10%;" id="e-pub">
+        <span>📊 PUBLIC DATA</span>
+      </div>
+    </div>
+
+    <!-- Arrow legend below canvas -->
+    <div style="margin-top:12px; font-size:8.5px; color:var(--mut); line-height:2; padding:10px 12px; background:rgba(255,240,248,0.5); border:1px solid var(--grd);">
+      <span style="font-family:'Press Start 2P',monospace;font-size:6px;color:var(--deep);display:block;margin-bottom:6px;">KEY DATA FLOWS (Level 1)</span>
+      <b>User → P1:</b> start_date, period_start/end, ovulation_date, end_date &nbsp;|&nbsp;
+      <b>P1 → D1:</b> INSERT/UPDATE cycles &nbsp;|&nbsp;
+      <b>P1 → D2:</b> INSERT daily_log (flow, mood, symptoms, sleep, stress) &nbsp;|&nbsp;
+      <b>D1 → P2:</b> cycle_lengths[], avg_sleep, avg_stress, avg_flow &nbsp;|&nbsp;
+      <b>D6 → P2:</b> population_prior.json, bayesian_state.json, lstm.pt &nbsp;|&nbsp;
+      <b>P2 → D3:</b> INSERT model_run { predictions JSONB, model_phase, personal_cycles } &nbsp;|&nbsp;
+      <b>P2 → D6:</b> updated model weights after Bayesian update / LSTM fine-tune &nbsp;|&nbsp;
+      <b>E_pub → P2:</b> Fehring CSV, mcPHASES CSVs (--setup only) &nbsp;|&nbsp;
+      <b>D3 → User:</b> next_period_est, ci_lower/upper, ovulation_est, fertile_window &nbsp;|&nbsp;
+      <b>User → P3:</b> entry_date, weather, journal text &nbsp;|&nbsp;
+      <b>P3 ↔ D4:</b> upsert / fetch by entry_date &nbsp;|&nbsp;
+      <b>Yahoo → P4:</b> OHLCV time-series, live price &nbsp;|&nbsp;
+      <b>User → P4:</b> investment amount, purchase date &nbsp;|&nbsp;
+      <b>P4 → D5:</b> INSERT { symbol, amount, price_on_date, units(generated) } &nbsp;|&nbsp;
+      <b>D5 → User:</b> units × live_price = current_value, gain/loss %
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     LEVEL 2 — DETAILED DATA FLOWS PER MODULE
+══════════════════════════════════════════════════════ -->
+<div class="panel">
+  <div class="panel-header">
+    <div class="panel-title">LEVEL 2 — DETAILED DATA FLOWS (PER MODULE)</div>
+  </div>
+  <div class="panel-body">
+    <div class="level-title">EVERY INPUT, TRANSFORMATION, STORAGE, AND OUTPUT FOR EACH SUBSYSTEM</div>
+
+    <div class="subsys-grid">
+
+      <!-- P1: Cycle Tracker -->
+      <div class="subsys" style="border-color:#4A7A9B;">
+        <span class="subsys-name" style="color:#2A5A8A;">P1 · CYCLE TRACKER</span>
+        <table class="flow-table">
+          <tr style="background:#EEF4FA;">
+            <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#2A5A8A;padding:5px 8px;">INPUTS</td>
+          </tr>
+          <tr>
+            <td class="flow-from">User</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">P1.1 Start Cycle</td>
+            <td class="flow-data">start_date, period_start, period_end (opt), notes</td>
+          </tr>
+          <tr>
+            <td class="flow-from">User</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">P1.2 Log Day</td>
+            <td class="flow-data">log_date, flow_intensity(0-5), mucus_type, moods[], 9×bool symptoms, sleep_hours, sleep_quality(1-3), stress_level(1-3), weight_kg, exercise_mins</td>
+          </tr>
+          <tr>
+            <td class="flow-from">User</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">P1.3 Save Dates</td>
+            <td class="flow-data">cycle_id, period_end, ovulation_date</td>
+          </tr>
+          <tr>
+            <td class="flow-from">User</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">P1.4 Complete Cycle</td>
+            <td class="flow-data">cycle_id, end_date</td>
+          </tr>
+          <tr style="background:#EEF4FA;">
+            <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#2A5A8A;padding:5px 8px;">TRANSFORMATIONS</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P1.2</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">day_of_cycle</td>
+            <td class="flow-data">= log_date − start_date + 1 (computed in FastAPI before INSERT)</td>
+          </tr>
+          <tr>
+            <td class="flow-from">D1 cycles</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">Generated cols</td>
+            <td class="flow-data">cycle_length = end_date − start_date &nbsp;|&nbsp; period_duration = period_end − period_start + 1 &nbsp;|&nbsp; luteal_length = end_date − ovulation_date</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P1.2 check</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">duplicate guard</td>
+            <td class="flow-data">GET /api/logs → filter by log_date + cycle_id → if match exists: show confirmation, overwrite with ON CONFLICT DO NOTHING after confirm</td>
+          </tr>
+          <tr style="background:#EEF4FA;">
+            <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#2A5A8A;padding:5px 8px;">STORAGE</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P1.1</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">D1 cycles <span class="store-tag">INSERT</span></td>
+            <td class="flow-data">new row, is_complete=FALSE</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P1.2</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">D2 daily_logs <span class="store-tag">INSERT</span></td>
+            <td class="flow-data">all symptom + lifestyle fields</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P1.3</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">D1 cycles <span class="store-tag">UPDATE</span></td>
+            <td class="flow-data">SET period_end=?, ovulation_date=? WHERE id=?</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P1.4</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">D1 cycles <span class="store-tag">UPDATE</span></td>
+            <td class="flow-data">SET end_date=?, is_complete=TRUE → triggers P2</td>
+          </tr>
+          <tr style="background:#EEF4FA;">
+            <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#2A5A8A;padding:5px 8px;">OUTPUTS</td>
+          </tr>
+          <tr>
+            <td class="flow-from">D1+D2</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">User: tabs</td>
+            <td class="flow-data">cycle table (all columns + generated), daily logs table (filterable), stat cards (mean length, phase), phase progress bar, cycle_summaries view (avg flow/sleep/stress per cycle)</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- P2: ML Pipeline -->
+      <div class="subsys" style="border-color:#4A6AAA;">
+        <span class="subsys-name" style="color:#2A4A8A;">P2 · ML PIPELINE</span>
+        <table class="flow-table">
+          <tr style="background:#EEEEFA;">
+            <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#2A4A8A;padding:5px 8px;">INPUTS</td>
+          </tr>
+          <tr>
+            <td class="flow-from">Public CSVs</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">P2.1 Setup Prior</td>
+            <td class="flow-data">Fehring: LengthofCycle, Age, BMI, LutealPhase, MeanBleedingIntensity / mcPHASES: hormone levels, cycle boundaries, wearable signals</td>
+          </tr>
+          <tr>
+            <td class="flow-from">D1 cycles</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">P2.2 Predict</td>
+            <td class="flow-data">last N cycle_lengths, avg_sleep, avg_stress, avg_flow per cycle (from cycle_summaries view)</td>
+          </tr>
+          <tr>
+            <td class="flow-from">D6 saved_models</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">P2.2/P2.3</td>
+            <td class="flow-data">population_prior.json (NB params + GBM weights), bayesian_state.json (alpha, beta posteriors), lstm_pretrained.pt + scaler.pkl</td>
+          </tr>
+          <tr style="background:#EEEEFA;">
+            <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#2A4A8A;padding:5px 8px;">TRANSFORMATIONS (3 PHASES)</td>
+          </tr>
+          <tr>
+            <td class="flow-from">Phase 1 (0-2)</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">PopulationPrior</td>
+            <td class="flow-data">Negative Binomial fit on irregular subset (std>7d or mean≥30d) → NB params (mu, r) + GradientBoosting point estimate from covariates</td>
+          </tr>
+          <tr>
+            <td class="flow-from">Phase 2 (3-7)</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">Bayesian update</td>
+            <td class="flow-data">Gamma(α,β) prior → posterior α'=α+Σy, β'=β+n → Negative Binomial predictive distribution → personal_weight = n/(n+β) grows 37%→87%</td>
+          </tr>
+          <tr>
+            <td class="flow-from">Phase 3 (8+)</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">LSTM fine-tune</td>
+            <td class="flow-data">6-cycle lookback sequences → 2-layer LSTM → Huber loss (δ=2.0) → fine-tune at 0.2× LR → 100 MC Dropout passes → mean ± σ distribution</td>
+          </tr>
+          <tr>
+            <td class="flow-from">Features</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">preprocessor.py</td>
+            <td class="flow-data">rolling mean/std, last-3 mean/std, linear trend, deviation_from_mean, irregularity_flag, period_duration, avg_flow, avg_sleep, avg_stress</td>
+          </tr>
+          <tr style="background:#EEEEFA;">
+            <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#2A4A8A;padding:5px 8px;">STORAGE + OUTPUTS</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P2 result</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">D3 model_runs <span class="store-tag">INSERT</span></td>
+            <td class="flow-data">{ predictions: { point_estimate, ci_lower_80, ci_upper_80, next_period_start_est, ovulation_date_est, fertile_window_start/end, confidence, personal_weight }, model_phase, personal_cycles }</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P2 result</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">D6 saved_models <span class="store-tag">WRITE</span></td>
+            <td class="flow-data">updated bayesian_state.json + lstm_finetuned.pt (background thread)</td>
+          </tr>
+          <tr>
+            <td class="flow-from">D3 model_runs</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">User: Results tab</td>
+            <td class="flow-data">prediction cards, CI width trend chart (Insights), phase progress (Cycles tab), status bar next period date</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- P3: Journal -->
+      <div class="subsys" style="border-color:#AA7030;">
+        <span class="subsys-name" style="color:#8A5010;">P3 · JOURNAL</span>
+        <table class="flow-table">
+          <tr style="background:#FAF0E0;">
+            <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#8A5010;padding:5px 8px;">INPUTS</td>
+          </tr>
+          <tr>
+            <td class="flow-from">User</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">P3.1 Navigate</td>
+            <td class="flow-data">◄/► buttons (offset ±1 day), date picker (jump to date), target always ≤ TODAY</td>
+          </tr>
+          <tr>
+            <td class="flow-from">User</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">P3.2 Write Entry</td>
+            <td class="flow-data">entry_date (current), weather (one of: sunny/cloudy/rainy/stormy/snowy/foggy or empty), content (free text)</td>
+          </tr>
+          <tr style="background:#FAF0E0;">
+            <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#8A5010;padding:5px 8px;">TRANSFORMATIONS</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P3.1 → D4</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">load check</td>
+            <td class="flow-data">GET /api/journal/{date} → last_saved≠null means entry exists → populate textarea + weather + show SAVED badge; last_saved=null → blank slate</td>
+          </tr>
+          <tr>
+            <td class="flow-from">savedEntry state</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">dirty detection</td>
+            <td class="flow-data">isDirty = (content ≠ savedEntry.content) OR (weather ≠ savedEntry.weather) → shows ● UNSAVED in title bar</td>
+          </tr>
+          <tr>
+            <td class="flow-from">save click</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">overwrite guard</td>
+            <td class="flow-data">if savedEntry≠null AND isDirty → show yellow confirmation banner → user must confirm YES before upsert proceeds</td>
+          </tr>
+          <tr style="background:#FAF0E0;">
+            <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#8A5010;padding:5px 8px;">STORAGE + OUTPUTS</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P3.2 save</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">D4 journal_entries <span class="store-tag">UPSERT</span></td>
+            <td class="flow-data">INSERT ... ON CONFLICT (entry_date) DO UPDATE SET weather=?, content=?, updated_at=NOW()</td>
+          </tr>
+          <tr>
+            <td class="flow-from">D4</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">User: JournalWindow</td>
+            <td class="flow-data">entry content in textarea (persists after save), SAVED badge in header, LAST SAVED timestamp in footer, UPDATE button label (vs SAVE for new)</td>
+          </tr>
+          <tr>
+            <td class="flow-from">PostgreSQL</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">Storage</td>
+            <td class="flow-data">TEXT stored with TOAST compression — 10 years of daily entries &lt; 10 MB on disk</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- P4: ETF Tracker -->
+      <div class="subsys" style="border-color:#7A3AAA;">
+        <span class="subsys-name" style="color:#5A1A8A;">P4 · ETF TRACKER</span>
+        <table class="flow-table">
+          <tr style="background:#F0E8FA;">
+            <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#5A1A8A;padding:5px 8px;">INPUTS</td>
+          </tr>
+          <tr>
+            <td class="flow-from">Yahoo Finance</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">P4.1 Chart Data</td>
+            <td class="flow-data">v8/finance/chart/{symbol}?interval=1h|1d&range=1wk|1mo|1y → timestamps[], closes[], opens[], highs[], lows[], regularMarketPrice, previousClose, currency, exchangeName</td>
+          </tr>
+          <tr>
+            <td class="flow-from">User</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">P4.2 Add Investment</td>
+            <td class="flow-data">symbol (ISWD.SW or IGDA.L), amount (ETF currency), investment_date, notes (optional)</td>
+          </tr>
+          <tr style="background:#F0E8FA;">
+            <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#5A1A8A;padding:5px 8px;">TRANSFORMATIONS</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P4.1</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">chart normalise</td>
+            <td class="flow-data">filter null closes, format timestamps to "YYYY-MM-DD HH:MM", round to 4dp, compute change = current − prev_close, change% = change/prev_close × 100</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P4.2 price fetch</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">historical lookup</td>
+            <td class="flow-data">period1 = investment_date − 4 days, period2 = investment_date + 1 day, interval=1d → find closest close ≤ investment_date (handles weekends / bank holidays)</td>
+          </tr>
+          <tr>
+            <td class="flow-from">price_on_date</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">units calc</td>
+            <td class="flow-data">PostgreSQL GENERATED: units = amount / price_on_date (stored, recomputable)</td>
+          </tr>
+          <tr>
+            <td class="flow-from">live price × units</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">portfolio calc</td>
+            <td class="flow-data">current_value = Σ(units × current_price) · gain_loss = current_value − Σamount · return_pct = gain_loss / Σamount × 100 (computed in React, no extra API call)</td>
+          </tr>
+          <tr style="background:#F0E8FA;">
+            <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#5A1A8A;padding:5px 8px;">STORAGE + OUTPUTS</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P4.2 result</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">D5 etf_investments <span class="store-tag">INSERT</span></td>
+            <td class="flow-data">{ symbol, amount, investment_date, price_on_date, units(generated), notes }</td>
+          </tr>
+          <tr>
+            <td class="flow-from">D5 + live price</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">User: ETFWindow</td>
+            <td class="flow-data">line chart (1W/1M/1Y) with prev_close reference line · portfolio summary: total invested, current value, gain/loss ▲▼, return % · per-entry table: date|invested|price paid|units|current val|gain/loss · auto-refresh every 5 min</td>
+          </tr>
+          <tr>
+            <td class="flow-from">Route order</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">⚠ Critical note</td>
+            <td class="flow-data">GET /api/etf/{symbol}/investments and POST /api/etf/investments MUST be registered BEFORE GET /api/etf/{symbol} in api/main.py — otherwise FastAPI treats "investments" as a symbol value and returns 405 Method Not Allowed</td>
+          </tr>
+        </table>
+      </div>
+
+    </div><!-- end subsys-grid -->
+
+    <!-- Data store summary -->
+    <div style="margin-top:24px; padding-top:16px; border-top:1px solid var(--grd);">
+      <div class="level-title">ALL DATA STORES — STRUCTURE AND ACCESS PATTERNS</div>
+      <table class="flow-table">
+        <tr style="background:var(--r2);">
+          <td style="font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 8px;color:var(--mut);">STORE</td>
+          <td style="font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 8px;color:var(--mut);">KEY COLUMNS</td>
+          <td style="font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 8px;color:var(--mut);">READS BY</td>
+          <td style="font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 8px;color:var(--mut);">WRITTEN BY</td>
+          <td style="font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 8px;color:var(--mut);">SPECIAL</td>
+        </tr>
+        <tr>
+          <td class="flow-to">D1 · cycles</td>
+          <td class="flow-data">id UUID, cycle_number, start_date, end_date, period_start/end, ovulation_date, is_complete, notes</td>
+          <td class="flow-data">P1 (display), P2 (ML features), cycle_summaries view</td>
+          <td class="flow-data">P1.1 start, P1.3 dates, P1.4 complete</td>
+          <td class="flow-data">cycle_length, period_duration, luteal_length are GENERATED columns</td>
+        </tr>
+        <tr>
+          <td class="flow-to">D2 · daily_logs</td>
+          <td class="flow-data">id, cycle_id FK, log_date, day_of_cycle, flow(0-5), mucus_type, moods TEXT[], 9 symptom bools, sleep_hours, sleep_quality, stress_level, weight_kg, exercise_mins</td>
+          <td class="flow-data">P1 (logs tab), P2 (feature aggregation), insights API</td>
+          <td class="flow-data">P1.2 log day</td>
+          <td class="flow-data">UNIQUE(cycle_id, log_date) — ON CONFLICT DO NOTHING guards duplicates</td>
+        </tr>
+        <tr>
+          <td class="flow-to">D3 · model_runs</td>
+          <td class="flow-data">id, run_date, model_phase, personal_cycles, predictions JSONB, model_version, metrics JSONB</td>
+          <td class="flow-data">Results tab, Insights CI chart, status bar</td>
+          <td class="flow-data">P2 after cycle complete or manual /api/predict</td>
+          <td class="flow-data">predictions JSONB evolves freely — no schema migration needed for new fields</td>
+        </tr>
+        <tr>
+          <td class="flow-to">D4 · journal_entries</td>
+          <td class="flow-data">id UUID, entry_date DATE UNIQUE, weather VARCHAR(30), content TEXT, created_at, updated_at</td>
+          <td class="flow-data">P3.1 on date change</td>
+          <td class="flow-data">P3.2 save (upsert)</td>
+          <td class="flow-data">TOAST compression on content TEXT — efficient for long entries; ON CONFLICT (entry_date) DO UPDATE</td>
+        </tr>
+        <tr>
+          <td class="flow-to">D5 · etf_investments</td>
+          <td class="flow-data">id UUID, symbol VARCHAR(20), amount NUMERIC(14,4), investment_date DATE, price_on_date NUMERIC(14,4), units NUMERIC(18,8) GENERATED, notes TEXT, created_at</td>
+          <td class="flow-data">P4.2 portfolio display</td>
+          <td class="flow-data">P4.2 add investment (backend fetches price)</td>
+          <td class="flow-data">units is a GENERATED column = amount/price_on_date; current_value computed in React not DB</td>
+        </tr>
+        <tr>
+          <td class="flow-to">D6 · saved_models/</td>
+          <td class="flow-data">population_prior.json (NB params + GBM), bayesian_state.json (alpha, beta), lstm_pretrained.pt, lstm_finetuned.pt, scaler.pkl</td>
+          <td class="flow-data">P2 at every prediction</td>
+          <td class="flow-data">P2 after --setup (prior), after cycle complete (Bayesian + LSTM)</td>
+          <td class="flow-data">File system (not PostgreSQL). LSTM fine-tune runs in background thread to avoid blocking API response</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend-grid" style="margin-top:20px;">
+      <div class="legend-row"><div class="leg-ext"></div>External entity (source/sink of data)</div>
+      <div class="legend-row"><div class="leg-proc"></div>Process (transforms data)</div>
+      <div class="legend-row"><div class="leg-store"></div>Data store (persists data)</div>
+      <div class="legend-row"><div class="leg-arrow"></div>Data flow (direction of movement)</div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:9px;color:var(--mut);">
+        <span class="store-tag" style="margin-left:0;">DB OP</span>INSERT / UPDATE / UPSERT / SELECT
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:9px;color:var(--mut);">
+        <span class="proc-tag" style="margin-left:0;">COMPUTED</span>Derived in FastAPI or React (not stored)
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- end page -->
+
+<script>
+// Draw simple SVG arrows for level 0 context diagram (decorative)
+// The actual data is in the table below — SVG just gives visual context
+const svg0 = document.getElementById('svg0')
+const canvas = svg0.parentElement
+const W = canvas.offsetWidth || 1100
+const H = canvas.offsetHeight || 520
+
+svg0.setAttribute('viewBox', `0 0 ${W} ${H}`)
+
+function pct(x,y){ return [W*x/100, H*y/100] }
+
+const arrows = [
+  // User → System
+  { from: pct(18,48), to: pct(37,48), label: 'cycle data\ndaily logs\ninvestments', color:'#7A1A38', offset:[0,-18] },
+  // System → User
+  { from: pct(37,52), to: pct(18,52), label: 'predictions\ncharts\njournal', color:'#7A1A38', dash:true, offset:[0,18] },
+  // Yahoo → System
+  { from: pct(82,28), to: pct(63,40), label: 'OHLCV prices', color:'#5A1A8A', offset:[10,-12] },
+  // System → Yahoo (request)
+  { from: pct(61,38), to: pct(80,26), label: 'ticker + range', color:'#5A1A8A', dash:true, offset:[-10,12] },
+  // Public → System
+  { from: pct(82,68), to: pct(63,55), label: 'training CSVs', color:'#2A4A8A', offset:[10,10] },
+]
+
+arrows.forEach(({from,to,label,color,dash,offset}) => {
+  const [ox,oy] = offset || [0,0]
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g')
+
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line')
+  line.setAttribute('x1', from[0]); line.setAttribute('y1', from[1])
+  line.setAttribute('x2', to[0]);   line.setAttribute('y2', to[1])
+  line.setAttribute('stroke', color); line.setAttribute('stroke-width', '1.5')
+  if(dash) line.setAttribute('stroke-dasharray','5 3')
+  line.setAttribute('marker-end', `url(#arr-${color.replace('#','')})`)
+  g.appendChild(line)
+
+  // Label
+  const mx = (from[0]+to[0])/2 + ox
+  const my = (from[1]+to[1])/2 + oy
+  const fo = document.createElementNS('http://www.w3.org/2000/svg','foreignObject')
+  fo.setAttribute('x', mx-45); fo.setAttribute('y', my-12)
+  fo.setAttribute('width','90'); fo.setAttribute('height','40')
+  fo.innerHTML = `<div xmlns="http://www.w3.org/1999/xhtml" style="font-family:'DM Mono',monospace;font-size:7.5px;color:${color};text-align:center;background:rgba(255,248,252,0.85);padding:2px 4px;white-space:pre-line;line-height:1.5;border:1px solid rgba(0,0,0,0.08);">${label}</div>`
+  g.appendChild(fo)
+
+  svg0.appendChild(g)
+})
+
+// Arrowhead markers
+const defs = document.createElementNS('http://www.w3.org/2000/svg','defs')
+;['7A1A38','5A1A8A','2A4A8A'].forEach(c => {
+  const m = document.createElementNS('http://www.w3.org/2000/svg','marker')
+  m.setAttribute('id',`arr-${c}`)
+  m.setAttribute('markerWidth','8'); m.setAttribute('markerHeight','8')
+  m.setAttribute('refX','6'); m.setAttribute('refY','3')
+  m.setAttribute('orient','auto')
+  const p = document.createElementNS('http://www.w3.org/2000/svg','path')
+  p.setAttribute('d','M0,0 L0,6 L8,3 z')
+  p.setAttribute('fill',`#${c}`)
+  m.appendChild(p); defs.appendChild(m)
+})
+svg0.insertBefore(defs, svg0.firstChild)
+
+// Level 1 SVG arrows
+const svg1 = document.getElementById('svg1')
+const canvas1 = svg1.parentElement
+const W1 = canvas1.offsetWidth || 1100
+const H1 = canvas1.offsetHeight || 700
+svg1.setAttribute('viewBox', `0 0 ${W1} ${H1}`)
+
+function p1(x,y){ return [W1*x/100, H1*y/100] }
+
+const defs1 = document.createElementNS('http://www.w3.org/2000/svg','defs')
+;['7A1A38','4A7A9B','3A8A52','8A6030','7A3AAA','4A6AAA'].forEach(c => {
+  const m = document.createElementNS('http://www.w3.org/2000/svg','marker')
+  m.setAttribute('id',`a1-${c}`)
+  m.setAttribute('markerWidth','7'); m.setAttribute('markerHeight','7')
+  m.setAttribute('refX','5'); m.setAttribute('refY','3')
+  m.setAttribute('orient','auto')
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path')
+  path.setAttribute('d','M0,0 L0,6 L7,3 z')
+  path.setAttribute('fill',`#${c}`)
+  m.appendChild(path); defs1.appendChild(m)
+})
+svg1.insertBefore(defs1, svg1.firstChild)
+
+const l1arrows = [
+  // User ↔ P1
+  { from:p1(38,86), to:p1(28,30), c:'7A1A38', d:true },
+  { from:p1(25,30), to:p1(35,86), c:'7A1A38' },
+  // P1 ↔ D1
+  { from:p1(32,22), to:p1(44,12), c:'8A6030' },
+  { from:p1(44,10), to:p1(30,18), c:'8A6030', d:true },
+  // P1 ↔ D2
+  { from:p1(20,30), to:p1(12,44), c:'8A6030' },
+  { from:p1(10,44), to:p1(18,32), c:'8A6030', d:true },
+  // P1 complete → P2 (trigger)
+  { from:p1(35,22), to:p1(60,22), c:'4A6AAA' },
+  // P2 ↔ D1
+  { from:p1(68,22), to:p1(56,12), c:'8A6030', d:true },
+  // P2 ↔ D6
+  { from:p1(62,35), to:p1(55,44), c:'4A6AAA' },
+  { from:p1(55,46), to:p1(62,38), c:'4A6AAA', d:true },
+  // P2 → D3
+  { from:p1(80,30), to:p1(88,44), c:'8A6030' },
+  { from:p1(88,46), to:p1(80,32), c:'8A6030', d:true },
+  // P2 ← public data
+  { from:p1(91,14), to:p1(78,20), c:'4A6AAA', d:true },
+  // D3 → user
+  { from:p1(88,50), to:p1(62,86), c:'8A6030', d:true },
+  // User ↔ P3
+  { from:p1(42,86), to:p1(30,78), c:'7A1A38' },
+  { from:p1(28,78), to:p1(40,88), c:'7A1A38', d:true },
+  // P3 ↔ D4
+  { from:p1(20,72), to:p1(12,82), c:'8A6030' },
+  { from:p1(10,84), to:p1(18,74), c:'8A6030', d:true },
+  // User ↔ P4
+  { from:p1(58,86), to:p1(68,78), c:'7A1A38' },
+  { from:p1(70,78), to:p1(60,88), c:'7A1A38', d:true },
+  // P4 ↔ Yahoo
+  { from:p1(80,68), to:p1(91,66), c:'7A3AAA', d:true },
+  { from:p1(91,64), to:p1(80,66), c:'7A3AAA' },
+  // P4 ↔ D5
+  { from:p1(80,74), to:p1(88,82), c:'8A6030' },
+  { from:p1(88,84), to:p1(80,76), c:'8A6030', d:true },
+]
+
+l1arrows.forEach(({from,to,c,d}) => {
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line')
+  line.setAttribute('x1',from[0]); line.setAttribute('y1',from[1])
+  line.setAttribute('x2',to[0]);   line.setAttribute('y2',to[1])
+  line.setAttribute('stroke',`#${c}`); line.setAttribute('stroke-width','1.5')
+  if(d) line.setAttribute('stroke-dasharray','4 2')
+  line.setAttribute('marker-end',`url(#a1-${c})`)
+  line.setAttribute('opacity','0.7')
+  svg1.appendChild(line)
+})
+</script>
+</body>
+</html>

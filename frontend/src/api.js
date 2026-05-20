@@ -28,6 +28,9 @@ export const api = {
   completeCycle: (data) => req('/cycles/complete', {
     method: 'POST', body: JSON.stringify(data),
   }),
+  updateCycleDates: (data) => req('/cycles/dates', {
+    method: 'POST', body: JSON.stringify(data),
+  }),
 
   // ── Daily logs ────────────────────────────────────────────────────────────
   getLogs:  (limit = 300) => req(`/logs?limit=${limit}`),
@@ -44,6 +47,15 @@ export const api = {
   getJournalEntry: (date) => req(`/journal/${date}`),
   saveJournalEntry: (data) => req('/journal', { method: 'POST', body: JSON.stringify(data) }),
 
+  // ── Daily habits ──────────────────────────────────────────────────────────
+  getHabits:  (date) => req(`/habits/${date}`),
+  saveHabits: (data) => req('/habits', { method: 'POST', body: JSON.stringify(data) }),
+  
   // ── ETF data ─────────────────────────────────────────────────────────────
   getETF: (symbol, range = '1mo') => req(`/etf/${symbol}?range=${range}`),
+
+  // ── ETF investments ───────────────────────────────────────────────────────
+  getETFInvestments: (symbol) => req(`/etf/${symbol}/investments`),
+  addETFInvestment:  (data)   => req('/etf/investments', { method: 'POST', body: JSON.stringify(data) }),
+  deleteETFInvestment: (id)   => req(`/etf/investments/${id}`, { method: 'DELETE' }),
 }

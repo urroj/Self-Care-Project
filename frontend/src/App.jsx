@@ -11,6 +11,8 @@ import ResultsTab    from './components/ResultsTab.jsx'
 import InsightsTab   from './components/InsightsTab.jsx'
 import JournalWindow from './components/JournalWindow.jsx'
 import ETFWindow from './components/ETFWindow.jsx'
+import HomeScreen from './components/HomeWidgets.jsx'
+
 
 // ── Error boundary ────────────────────────────────────────────────────────────
 class ErrorBoundary extends React.Component {
@@ -337,28 +339,6 @@ function TitleBar({ title, icon, onMouseDown }) {
   )
 }
 
-function MenuBar() {
-  const [open, setOpen] = useState(null)
-  return (
-    <div style={{
-      background: C.face, borderBottom: `1px solid ${C.grd}`,
-      padding: '1px 6px', display: 'flex', gap: 2,
-    }}>
-      {['FILE', 'DATA', 'VIEW', 'HELP'].map(m => (
-        <span key={m} style={{
-          fontFamily: FONT, fontSize: SIZE.md,
-          color: open === m ? C.barT : C.txt,
-          background: open === m ? C.bar : 'transparent',
-          cursor: 'default', padding: '2px 6px', letterSpacing: '.04em',
-        }}
-          onMouseEnter={() => setOpen(m)}
-          onMouseLeave={() => setOpen(null)}
-        >{m}</span>
-      ))}
-    </div>
-  )
-}
-
 function TabBar({ tab, setTab }) {
   return (
     <div style={{
@@ -551,7 +531,6 @@ export default function App() {
               icon="ti-moon-stars"
               onMouseDown={(e) => { startDrag(e, cyclePos, setCyclePos); focusCycle() }}
             />
-            <MenuBar />
             <TabBar tab={tab} setTab={setTab} />
 
             {notif && <Notification type={notif.type} msg={notif.msg} />}
@@ -618,6 +597,14 @@ export default function App() {
             />
           </AnimatedWindow>
 
+          {!cycleOpen && !journalOpen && !etfOpen && (
+            <HomeScreen
+              activeCycle={activeCycle}
+              status={status}
+              refreshKey={refreshKey}
+            />
+          )}
+          
         </div>
 
         <DecoLayer stars={STARS_FRONT} sparkles={SPARKLES_FRONT} clouds={CLOUDS_FRONT} zIndex={999} />

@@ -1,11 +1,11 @@
 // components/LogTab.jsx — daily symptom + lifestyle log form
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../api.js'
 import { C, FONT, RAISED, SIZE } from '../theme.js'
 import { Label, Inp, Sel, CheckRow, RadioRow, GroupBox, PixelBtn } from './Shared.jsx'
 
-const TODAY = new Date().toISOString().slice(0, 10)
+const TODAY = new Date().toLocaleDateString('sv')
 
 const INIT = {
   log_date: TODAY,
@@ -47,7 +47,69 @@ function daysBetween(d1, d2) {
 
 export default function LogTab({ activeCycle, notify, onSaved }) {
   const [form, setForm] = useState(INIT)
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving]             = useState(false)
+  const [existingLog, setExistingLog]   = useState(null)   // log fetched from DB for current date
+  const [confirmOverwrite, setConfirmOverwrite] = useState(false)
+  const [checking, setChecking]         = useState(false)
+
+  // Check DB whenever date OR activeCycle changes.
+  // activeCycle starts as undefined (loading) then becomes object or null.
+  // We must re-run when it transitions from undefined → object so that
+  // previously saved logs from past sessions are detected on initial mount.
+  useEffect(() => {
+    // Wait until activeCycle has resolved (undefined = still loading)
+    if (activeCycle === undefined || !form.log_date) return
+    // No active cycle — nothing to check
+    if (!activeCycle) { setExistingLog(null); setChecking(false); return }
+
+    setChecking(true)
+    setConfirmOverwrite(false)
+    setExistingLog(null)
+
+    api.getLogs(300)
+      .then(logs => {
+        // Normalise DB date — may be "2025-05-20" or "2025-05-20T00:00:00" or "2025-05-20 00:00:00"
+        const match = logs.find(l =>
+          String(l.log_date) === '2026-05-18' && l.cycle_id === activeCycle.id
+        )
+        
+
+        if (match) {
+          setExistingLog(match)
+          // Populate form from DB so user sees what was previously saved
+          setForm(prev => ({
+            ...prev,
+            flow_intensity:        match.flow_intensity != null ? String(match.flow_intensity) : '',
+            mucus_type:            match.mucus_type            || '',
+            moods:                 Array.isArray(match.moods)  ? match.moods : [],
+            symptom_cramps:        !!match.symptom_cramps,
+            symptom_bloating:      !!match.symptom_bloating,
+            symptom_breast_tender: !!match.symptom_breast_tender,
+            symptom_headache:      !!match.symptom_headache,
+            symptom_acne:          !!match.symptom_acne,
+            symptom_back_pain:     !!match.symptom_back_pain,
+            symptom_nausea:        !!match.symptom_nausea,
+            symptom_fatigue:       !!match.symptom_fatigue,
+            symptom_ovulation_pain:!!match.symptom_ovulation_pain,
+            sleep_hours:    match.sleep_hours    != null ? String(match.sleep_hours)  : '',
+            sleep_quality:  match.sleep_quality  != null ? String(match.sleep_quality): '',
+            stress_level:   match.stress_level   != null ? String(match.stress_level) : '',
+            weight_kg:      match.weight_kg      != null ? String(match.weight_kg)    : '',
+            exercise_mins:  match.exercise_mins  != null ? String(match.exercise_mins): '',
+          }))
+        } else {
+          setExistingLog(null)
+          // Reset form to blank for this date (keep the date itself)
+          setForm(prev => ({ ...INIT, log_date: prev.log_date }))
+        }
+      })
+      .catch(() => { setExistingLog(null) })
+      .finally(() => setChecking(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.log_date, activeCycle?.id])
+  // NOTE: activeCycle?.id — using the id (not the object reference) means
+  // the effect only re-runs when the active cycle actually changes, not on
+  // every parent render.
 
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }))
   const toggleMood = m => setForm(p => ({
@@ -55,38 +117,53 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
     moods: p.moods.includes(m) ? p.moods.filter(x => x !== m) : [...p.moods, m],
   }))
 
-  const handleSave = async () => {
+  const buildPayload = () => {
+    const dayNum = daysBetween(activeCycle.start_date, form.log_date)
+    return {
+      cycle_id:              activeCycle.id,
+      log_date:              form.log_date,
+      day_of_cycle:          dayNum,
+      flow_intensity:        form.flow_intensity !== '' ? parseInt(form.flow_intensity) : null,
+      mucus_type:            form.mucus_type || null,
+      moods:                 form.moods,
+      symptom_cramps:        form.symptom_cramps,
+      symptom_bloating:      form.symptom_bloating,
+      symptom_breast_tender: form.symptom_breast_tender,
+      symptom_headache:      form.symptom_headache,
+      symptom_acne:          form.symptom_acne,
+      symptom_back_pain:     form.symptom_back_pain,
+      symptom_nausea:        form.symptom_nausea,
+      symptom_fatigue:       form.symptom_fatigue,
+      symptom_ovulation_pain:form.symptom_ovulation_pain,
+      sleep_hours:           form.sleep_hours   ? parseFloat(form.sleep_hours)  : null,
+      sleep_quality:         form.sleep_quality ? parseInt(form.sleep_quality)  : null,
+      stress_level:          form.stress_level  ? parseInt(form.stress_level)   : null,
+      weight_kg:             form.weight_kg     ? parseFloat(form.weight_kg)    : null,
+      exercise_mins:         form.exercise_mins ? parseInt(form.exercise_mins)  : null,
+    }
+  }
+
+  const handleSave = () => {
     if (!form.log_date) { notify('err', 'DATE IS REQUIRED'); return }
     if (!activeCycle)   { notify('err', 'NO ACTIVE CYCLE — START ONE IN MY CYCLES'); return }
+    // If a log already exists for this date, ask for confirmation
+    if (existingLog) {
+      setConfirmOverwrite(true)
+      return
+    }
+    doSave()
+  }
 
+  const doSave = async () => {
+    setConfirmOverwrite(false)
     setSaving(true)
     try {
-      const dayNum = daysBetween(activeCycle.start_date, form.log_date)
-      await api.saveLog({
-        cycle_id:    activeCycle.id,
-        log_date:    form.log_date,
-        day_of_cycle: dayNum,
-        flow_intensity:  form.flow_intensity  !== '' ? parseInt(form.flow_intensity)   : null,
-        mucus_type:      form.mucus_type      || null,
-        moods:           form.moods,
-        symptom_cramps:         form.symptom_cramps,
-        symptom_bloating:       form.symptom_bloating,
-        symptom_breast_tender:  form.symptom_breast_tender,
-        symptom_headache:       form.symptom_headache,
-        symptom_acne:           form.symptom_acne,
-        symptom_back_pain:      form.symptom_back_pain,
-        symptom_nausea:         form.symptom_nausea,
-        symptom_fatigue:        form.symptom_fatigue,
-        symptom_ovulation_pain: form.symptom_ovulation_pain,
-        sleep_hours:   form.sleep_hours   ? parseFloat(form.sleep_hours)  : null,
-        sleep_quality: form.sleep_quality ? parseInt(form.sleep_quality)  : null,
-        stress_level:  form.stress_level  ? parseInt(form.stress_level)   : null,
-        weight_kg:     form.weight_kg     ? parseFloat(form.weight_kg)    : null,
-        exercise_mins: form.exercise_mins ? parseInt(form.exercise_mins)  : null,
-      })
-      notify('ok', `DAY ${dayNum} LOG SAVED`)
+      const payload = buildPayload()
+      await api.saveLog(payload)
+      notify('ok', existingLog ? `DAY ${payload.day_of_cycle} LOG UPDATED` : `DAY ${payload.day_of_cycle} LOG SAVED`)
       onSaved()
-      setForm({ ...INIT, log_date: form.log_date })
+      setExistingLog({ ...payload })   // treat it as the new "existing" log
+      // Keep form populated — don't clear after save
     } catch (e) {
       notify('err', e.message || 'SAVE FAILED')
     } finally {
@@ -94,7 +171,12 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
     }
   }
 
-  const handleClear = () => setForm({ ...INIT, log_date: form.log_date })
+  const handleClear = () => {
+    // Clear form but keep the date — effect will NOT re-run (date unchanged)
+    // so manually reset existingLog state too if user wants a fresh start
+    setForm({ ...INIT, log_date: form.log_date })
+    setConfirmOverwrite(false)
+  }
 
   return (
     <div style={{ padding: '10px 12px', overflowY: 'auto', maxHeight: 'calc(100vh - 140px)' }}>
@@ -110,6 +192,37 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
         </div>
       )}
 
+      {/* Overwrite confirmation */}
+      {confirmOverwrite && (
+        <div style={{
+          background: '#FFF0C8',
+          border: `2px solid #B8860B`,
+          boxShadow: `2px 2px 0 ${C.sh}`,
+          padding: '10px 12px', marginBottom: 10,
+          fontFamily: FONT, fontSize: SIZE.xs, color: '#6A4A00', lineHeight: 2,
+        }}>
+          <div style={{ marginBottom: 8 }}>
+            ⚠ A LOG ALREADY EXISTS FOR {form.log_date}. UPDATE IT WITH CURRENT VALUES?
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={doSave} style={{
+              fontFamily: FONT, fontSize: SIZE.xs, color: C.ok,
+              background: C.face, border: 'none', boxShadow: RAISED,
+              padding: '3px 14px', cursor: 'pointer',
+            }}>
+              YES, UPDATE
+            </button>
+            <button onClick={() => setConfirmOverwrite(false)} style={{
+              fontFamily: FONT, fontSize: SIZE.xs, color: C.mut,
+              background: C.face, border: 'none', boxShadow: RAISED,
+              padding: '3px 14px', cursor: 'pointer',
+            }}>
+              CANCEL
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Active cycle context pill */}
       {activeCycle && (
         <div style={{
@@ -120,6 +233,14 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
         }}>
           <span style={{ color: C.sage }}>●</span>
           Cycle #{activeCycle.cycle_number} · started {activeCycle.start_date}
+          {existingLog && (
+            <span style={{
+              marginLeft: 8, background: C.ok, color: '#fff',
+              padding: '0 5px', fontSize: 7, fontFamily: FONT,
+            }}>
+              LOG EXISTS
+            </span>
+          )}
           {form.log_date && (
             <span style={{ color: C.txt }}>
               · day {daysBetween(activeCycle.start_date, form.log_date)}
@@ -134,8 +255,8 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
         <div>
           <GroupBox title="DATE &amp; FLOW">
             <Label>log date</Label>
-            <Inp type="date" value={form.log_date}
-              onChange={e => f('log_date', e.target.value)}
+            <Inp type="date" lang="en-CA" value={form.log_date}
+            onChange={e => f('log_date', e.target.value.replace(/\//g, '-'))}
               style={{ marginBottom: 6 }} />
             <Label>flow intensity</Label>
             <Sel value={form.flow_intensity}
@@ -216,9 +337,9 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
         display: 'flex', justifyContent: 'flex-end', gap: 6,
       }}>
         <PixelBtn onClick={handleClear} color={C.mut}>CLEAR</PixelBtn>
-        <PixelBtn onClick={handleSave} color={C.ok} disabled={saving}
+        <PixelBtn onClick={handleSave} color={C.ok} disabled={saving || checking}
           style={{ minWidth: 110 }}>
-          {saving ? 'SAVING…' : '▶ SAVE LOG'}
+          {checking ? 'CHECKING…' : saving ? 'SAVING…' : existingLog ? '▶ UPDATE LOG' : '▶ SAVE LOG'}
         </PixelBtn>
       </div>
     </div>

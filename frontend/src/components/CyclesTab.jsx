@@ -10,8 +10,11 @@ const TODAY = new Date().toISOString().slice(0, 10)
 export default function CyclesTab({ refreshKey, activeCycle, notify, onCycleAction }) {
   const [cycles, setCycles]     = useState([])
   const [loading, setLoading]   = useState(true)
-  const [endDate, setEndDate]   = useState(TODAY)
-  const [completing, setCompleting] = useState(false)
+  const [endDate,        setEndDate]        = useState(TODAY)
+  const [periodEndDate,  setPeriodEndDate]  = useState('')
+  const [ovulationDate,  setOvulationDate]  = useState('')
+  const [savingDates,    setSavingDates]    = useState(false)
+  const [completing,     setCompleting]     = useState(false)
 
   // Start new cycle form state
   const [showStart, setShowStart] = useState(false)
@@ -44,6 +47,29 @@ export default function CyclesTab({ refreshKey, activeCycle, notify, onCycleActi
       notify('err', e.message || 'FAILED TO START CYCLE')
     } finally {
       setStarting(false)
+    }
+  }
+
+  const handleSaveDates = async () => {
+    if (!activeCycle) return
+    if (!periodEndDate && !ovulationDate) {
+      notify('err', 'ENTER AT LEAST ONE DATE TO SAVE')
+      return
+    }
+    setSavingDates(true)
+    try {
+      // Update cycle with period_end and/or ovulation_date via PATCH-style complete-lite
+      await api.updateCycleDates({
+        cycle_id:       activeCycle.id,
+        period_end:     periodEndDate || null,
+        ovulation_date: ovulationDate || null,
+      })
+      notify('ok', 'DATES SAVED')
+      onCycleAction()
+    } catch (e) {
+      notify('err', e.message || 'SAVE FAILED')
+    } finally {
+      setSavingDates(false)
     }
   }
 
@@ -113,17 +139,56 @@ export default function CyclesTab({ refreshKey, activeCycle, notify, onCycleActi
             ))}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
-            <div style={{ flex: 1 }}>
-              <Label style={{ color: '#9A4060' }}>end date (first day of next period)</Label>
-              <Inp type="date" value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                style={{ borderColor: C.frame }} />
+          {/* ── Optional date fields ──────────────────────────── */}
+          <div style={{
+            borderTop: `1px solid ${C.grd}`, paddingTop: 10, marginBottom: 10,
+          }}>
+            <div style={{
+              fontFamily: FONT, fontSize: SIZE.xs, color: '#9A4060',
+              letterSpacing: '.04em', marginBottom: 8,
+            }}>
+              LOG DATES FOR THIS CYCLE
             </div>
-            <PixelBtn onClick={handleComplete} disabled={completing}
-              color={C.frame} style={{ minWidth: 160, padding: '4px 16px', fontWeight: 'bold' }}>
-              {completing ? 'SAVING…' : '■ MARK CYCLE COMPLETE'}
-            </PixelBtn>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 10px', marginBottom: 8 }}>
+              <div>
+                <Label style={{ color: '#9A4060' }}>period end date</Label>
+                <Inp type="date" value={periodEndDate}
+                  max={TODAY}
+                  min={activeCycle.start_date}
+                  onChange={e => setPeriodEndDate(e.target.value)}
+                  style={{ borderColor: C.grd }} />
+              </div>
+              <div>
+                <Label style={{ color: '#9A4060' }}>ovulation date</Label>
+                <Inp type="date" value={ovulationDate}
+                  max={TODAY}
+                  min={activeCycle.start_date}
+                  onChange={e => setOvulationDate(e.target.value)}
+                  style={{ borderColor: C.grd }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <PixelBtn onClick={handleSaveDates} disabled={savingDates} color={C.ok}
+                style={{ padding: '3px 14px' }}>
+                {savingDates ? 'SAVING…' : '▶ SAVE DATES'}
+              </PixelBtn>
+            </div>
+          </div>
+
+          {/* ── Mark cycle complete ───────────────────────────────── */}
+          <div style={{ borderTop: `1px solid ${C.grd}`, paddingTop: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <Label style={{ color: '#9A4060' }}>cycle end date (first day of next period)</Label>
+                <Inp type="date" value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  style={{ borderColor: C.frame }} />
+              </div>
+              <PixelBtn onClick={handleComplete} disabled={completing}
+                color={C.frame} style={{ minWidth: 160, padding: '4px 16px', fontWeight: 'bold' }}>
+                {completing ? 'SAVING…' : '■ MARK COMPLETE'}
+              </PixelBtn>
+            </div>
           </div>
         </div>
       ) : (

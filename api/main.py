@@ -179,6 +179,29 @@ def start_cycle(data: StartCycleIn):
         raise HTTPException(500, str(e))
 
 
+
+
+class CycleDatesIn(BaseModel):
+    cycle_id:       str
+    period_end:     str | None = None
+    ovulation_date: str | None = None
+
+
+@app.post("/api/cycles/dates")
+def update_cycle_dates(data: CycleDatesIn):
+    """Save period_end and/or ovulation_date for the active cycle without completing it."""
+    from db.connector import update_cycle_dates as _update
+    try:
+        _update(
+            cycle_id       = data.cycle_id,
+            period_end     = _isodate(data.period_end)     if data.period_end     else None,
+            ovulation_date = _isodate(data.ovulation_date) if data.ovulation_date else None,
+        )
+        return {"status": "updated"}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
 @app.post("/api/cycles/complete")
 def complete_cycle_endpoint(data: CompleteCycleIn):
     """
@@ -312,7 +335,18 @@ class JournalIn(BaseModel):
     weather: str = ""
     content: str = ""
 
-
+class HabitsIn(BaseModel):
+    date:           str
+    water_glasses:  int  = 0
+    prayer_fajr:    bool = False
+    prayer_zuhr:    bool = False
+    prayer_asr:     bool = False
+    prayer_maghrib: bool = False
+    prayer_isha:    bool = False
+    quran_recited:  bool = False
+    todos:          list = []
+    project_ideas:  list = []
+    
 @app.get("/api/journal/{date}")
 def get_journal(date: str):
     try:
@@ -359,6 +393,149 @@ def save_journal(data: JournalIn):
         raise HTTPException(500, f"DB ERROR: {err}")
 
 
+
+# ── Daily habits ──────────────────────────────────────────────────────────────
+
+@app.get("/api/habits/{date}")
+def get_habits(date: str):
+    from db.connector import get_habits as _get
+    try:
+        entry = _get(date)
+        return entry if entry else {
+            "habit_date": date, "water_glasses": 0,
+            "prayer_fajr": False, "prayer_zuhr": False, "prayer_asr": False,
+            "prayer_maghrib": False, "prayer_isha": False, "quran_recited": False,
+            "todos": [], "project_ideas": [], "last_saved": None,
+        }
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@app.post("/api/habits")
+def save_habits(data: HabitsIn):
+    from db.connector import upsert_habits
+    try:
+        upsert_habits(
+            habit_date     = data.date,
+            water_glasses  = data.water_glasses,
+            prayer_fajr    = data.prayer_fajr,
+            prayer_zuhr    = data.prayer_zuhr,
+            prayer_asr     = data.prayer_asr,
+            prayer_maghrib = data.prayer_maghrib,
+            prayer_isha    = data.prayer_isha,
+            quran_recited  = data.quran_recited,
+            todos          = data.todos,
+            project_ideas  = data.project_ideas,
+        )
+        return {"status": "saved"}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+# ── ETF investments ───────────────────────────────────────────────────────────
+
+class ETFInvestmentIn(BaseModel):
+    symbol:          str
+    amount:          float
+    investment_date: str
+    notes:           str = ""
+
+
+@app.get("/api/etf/{symbol}/investments")
+def get_investments(symbol: str):
+    from db.connector import get_etf_investments
+    try:
+        return get_etf_investments(symbol)
+    except Exception as e:
+        err = str(e)
+        if "etf_investments" in err and "does not exist" in err:
+            raise HTTPException(500, "TABLE NOT FOUND: run etf_investments_migration.sql first")
+        raise HTTPException(500, err)
+
+
+@app.post("/api/etf/investments")
+def add_investment(data: ETFInvestmentIn):
+    """
+    Fetch the closing price on investment_date from Yahoo Finance,
+    then persist the investment with units calculated automatically.
+    """
+    import requests as _req
+
+    # Fetch price on investment date ─────────────────────────────────
+    inv_dt = _isodate(data.investment_date)
+    # Request a 5-day window around the date to handle weekends/holidays
+    import datetime
+    d_start = inv_dt - datetime.timedelta(days=4)
+    d_end   = inv_dt + datetime.timedelta(days=1)
+
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{data.symbol}"
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+    params  = {
+        "period1":  int(datetime.datetime(d_start.year, d_start.month, d_start.day).timestamp()),
+        "period2":  int(datetime.datetime(d_end.year,   d_end.month,   d_end.day).timestamp()),
+        "interval": "1d",
+    }
+    try:
+        resp = _req.get(url, headers=headers, params=params, timeout=12)
+        resp.raise_for_status()
+        result = resp.json().get("chart", {}).get("result", [])
+        if not result:
+            raise HTTPException(502, f"No price data returned for {data.symbol}")
+
+        r          = result[0]
+        timestamps = r.get("timestamp", [])
+        closes     = r["indicators"]["quote"][0].get("close", [])
+
+        # Find the closest trading day on or before investment_date
+        best_price = None
+        best_ts    = None
+        import datetime as _dt
+        target_ts  = int(_dt.datetime(inv_dt.year, inv_dt.month, inv_dt.day, 23, 59).timestamp())
+        for ts, cl in zip(timestamps, closes):
+            if cl is not None and ts <= target_ts:
+                if best_ts is None or ts > best_ts:
+                    best_ts    = ts
+                    best_price = cl
+
+        if best_price is None:
+            raise HTTPException(422, f"No trading data found on or before {data.investment_date} for {data.symbol}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, f"Price fetch failed: {str(e)[:200]}")
+
+    # Persist ─────────────────────────────────────────────────────────
+    from db.connector import add_etf_investment
+    try:
+        inv_id = add_etf_investment(
+            symbol          = data.symbol,
+            amount          = data.amount,
+            investment_date = str(inv_dt),
+            price_on_date   = round(float(best_price), 4),
+            notes           = data.notes,
+        )
+        units = data.amount / best_price if best_price else None
+        return {
+            "id":             inv_id,
+            "price_on_date":  round(float(best_price), 4),
+            "units":          round(units, 6) if units else None,
+        }
+    except Exception as e:
+        err = str(e)
+        if "etf_investments" in err and "does not exist" in err:
+            raise HTTPException(500, "TABLE NOT FOUND: run etf_investments_migration.sql first")
+        raise HTTPException(500, err)
+
+
+@app.delete("/api/etf/investments/{investment_id}")
+def remove_investment(investment_id: str):
+    from db.connector import delete_etf_investment
+    try:
+        delete_etf_investment(investment_id)
+        return {"status": "deleted"}
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 
 # ── ETF data (Yahoo Finance proxy) ────────────────────────────────────────────
@@ -436,6 +613,8 @@ def get_etf_data(symbol: str, range: str = "1mo"):
         raise
     except Exception as e:
         raise HTTPException(502, f"ETF fetch failed for {symbol}: {str(e)[:200]}")
+
+
 
 
 # ── Static file serving (production build) ────────────────────────────────────

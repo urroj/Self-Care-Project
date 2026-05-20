@@ -6,13 +6,11 @@ This started as a personal menstrual cycle tracker and ovulation predictor for i
 
 The ML model improves automatically every month as you log new cycles, progressing through three phases from a population prior all the way to a fine-tuned personal LSTM.
 
-It does not stop at cycle tracking. This release adds a personal journal, and an Islamic ETF tracker (Currently tracking two that I am invested in. You can change them in ETFWindow.jsx file. details below). Future iterations can keep adding windows — the desktop is yours.
+It does not stop at cycle tracking. The desktop now has four windows: Cycle Tracker, Journal (with daily habits), ETF Tracker, and a Home screen with live widgets. Future iterations can keep adding windows — the desktop is yours.
 
 Future changes planned:
 1. Add a prediction model for the ETFs
-2. Add your invesmnet to track actual growth
-3. Retrieve journal entries
-4. Add edge case handling
+
 ---
 
 ## Table of Contents
@@ -41,14 +39,16 @@ YOUR DATA (PostgreSQL)       │
   cycles table            ──┤
   daily_logs table        ──┼──► Active Model
   journal_entries table   ──┤      Phase 1 (<3 cycles)  → Population Prior
-  model_runs table        ──┘      Phase 2 (3–7 cycles) → Bayesian update
-                                   Phase 3 (8+ cycles)  → Fine-tuned LSTM
+  daily_habits table      ──┤      Phase 2 (3–7 cycles) → Bayesian update
+  etf_investments table   ──┤      Phase 3 (8+ cycles)  → Fine-tuned LSTM
+  model_runs table        ──┘
 
 Yahoo Finance (live)  ──► FastAPI proxy ──► ETF charts
 
 FastAPI backend ──► React frontend ──► PyWebView native window
+                                         ├── Home screen (widgets)
                                          ├── Cycle Tracker window
-                                         ├── Journal window
+                                         ├── Journal window (journal + habits)
                                          └── ETF Tracker window
 ```
 
@@ -58,42 +58,44 @@ FastAPI backend ──► React frontend ──► PyWebView native window
 
 ```
 cycle_tracker_app/
-├── app.py                  Desktop launcher (FastAPI + PyWebView)
-├── config.py               All constants, paths, model thresholds
-├── demo.py                 Runs the pipeline without a database
-├── pipeline.py             ML orchestrator CLI (setup / predict / update)
-├── README.md               This file
-├── requirements.txt        Python dependencies
-├── schema.sql              PostgreSQL table and view definitions
-├── setup.sh                One-shot automated setup script
+├── app.py                      Desktop launcher (FastAPI + PyWebView)
+├── config.py                   All constants, paths, model thresholds
+├── demo.py                     Runs the pipeline without a database
+├── pipeline.py                 ML orchestrator CLI (setup / predict / update)
+├── README.md                   This file
+├── requirements.txt            Python dependencies
+├── schema.sql                  PostgreSQL table and view definitions
+├── journal_migration.sql       Adds journal_entries table
+├── habits_migration.sql        Adds daily_habits table
+├── setup.sh                    One-shot automated setup script
 │
 ├── api/
-│   └── main.py             FastAPI — all API routes including journal + ETF proxy
+│   └── main.py                 FastAPI — all API routes including journal, habits, ETF proxy
 │
 ├── db/
-│   └── connector.py        All PostgreSQL reads and writes
+│   └── connector.py            All PostgreSQL reads and writes
 │
 ├── models/
-│   ├── base_model.py       Population prior (NB) + Bayesian personal model
-│   └── lstm.py             LSTM network definition and trainer
+│   ├── base_model.py           Population prior (NB) + Bayesian personal model
+│   └── lstm.py                 LSTM network definition and trainer
 │
 ├── data/
-│   ├── loaders.py          Public dataset loaders (Fehring, mcPHASES)
-│   ├── preprocessor.py     Feature engineering and sequence builder
-│   ├── raw/                Place downloaded public CSVs here
-│   └── cache/              Auto-generated parquet cache (do not edit)
+│   ├── loaders.py              Public dataset loaders (Fehring, mcPHASES)
+│   ├── preprocessor.py         Feature engineering and sequence builder
+│   ├── raw/                    Place downloaded public CSVs here
+│   └── cache/                  Auto-generated parquet cache (do not edit)
 │
-├── saved_models/           Auto-generated model checkpoints (do not edit)
+├── saved_models/               Auto-generated model checkpoints (do not edit)
 │
 └── frontend/
-    ├── index.html          HTML entry point — pixel font, custom cursors, gradients
-    ├── vite.config.js      Vite build config and dev-server API proxy
-    ├── package.json        npm dependencies (React, Recharts, Vite)
+    ├── index.html              HTML entry point — pixel font, custom cursors, gradients
+    ├── vite.config.js          Vite build config and dev-server API proxy
+    ├── package.json            npm dependencies (React, Recharts, Vite)
     └── src/
-        ├── main.jsx        React entry point — mounts App into index.html
-        ├── App.jsx         Multi-window desktop shell — dock, animations, drag
-        ├── api.js          All fetch() calls to the FastAPI backend
-        ├── theme.js        Design tokens — pixel pink palette, fonts, bevel helpers
+        ├── main.jsx            React entry point — mounts App into index.html
+        ├── App.jsx             Multi-window desktop shell — dock, animations, drag
+        ├── api.js              All fetch() calls to the FastAPI backend
+        ├── theme.js            Design tokens — pixel pink palette, fonts, bevel helpers
         └── components/
             ├── Shared.jsx          Reusable UI primitives (inputs, buttons, cards)
             ├── LogTab.jsx          Daily log form — flow, mood, symptoms, sleep
@@ -101,8 +103,9 @@ cycle_tracker_app/
             ├── LogsTab.jsx         Filterable scrollable daily logs table
             ├── ResultsTab.jsx      Predictions + model explanation panel
             ├── InsightsTab.jsx     Charts: CI trend, cycle length, symptoms, mood
-            ├── JournalWindow.jsx   Personal daily journal — ruled paper, weather
-            └── ETFWindow.jsx       Islamic ETF tracker — live charts, 1W/1M/1Y
+            ├── JournalWindow.jsx   Journal (ruled paper + weather) and daily habits tabs
+            ├── ETFWindow.jsx       Islamic ETF tracker — live charts, investments
+            └── HomeWidgets.jsx     Home screen widgets — cycle, journal, ETF summaries
 ```
 
 ---
@@ -142,7 +145,7 @@ All Python dependencies. Key packages: `fastapi` and `uvicorn` (API server),
 `torch` is commented out — only needed at Phase 3 (8+ cycles).
 
 **`schema.sql`**
-PostgreSQL DDL. Creates `cycles`, `daily_logs`, `model_runs`, 'journal_entries' tables and the
+PostgreSQL DDL. Creates `cycles`, `daily_logs`, `model_runs`,'daily_habits','journal_entries' tables and the
 `cycle_summaries` view. Apply with: `psql -d period_tracker -f schema.sql`
 
 **`setup.sh`**
@@ -159,21 +162,27 @@ FastAPI application. Wraps the Python pipeline, database connector, and external
 data sources so the React frontend can reach them all over HTTP.
 In production, also serves the compiled React app from `frontend/dist/`.
 
-| Method | Route                    | Purpose                                              |
-|--------|--------------------------|------------------------------------------------------|
-| GET    | `/api/status`            | Model phase, cycles logged, next period estimate     |
-| GET    | `/api/cycles`            | All cycles (completed + active)                      |
-| GET    | `/api/cycles/active`     | The current incomplete cycle                         |
-| POST   | `/api/cycles/start`      | Open a new cycle                                     |
-| POST   | `/api/cycles/complete`   | Close cycle, Bayesian update, new prediction         |
-| GET    | `/api/logs`              | All daily logs joined with cycle number              |
-| POST   | `/api/logs`              | Insert one daily log row                             |
-| GET    | `/api/predictions`       | Stored model_runs rows                               |
-| POST   | `/api/predict`           | Run prediction and store result                      |
-| GET    | `/api/insights`          | Aggregated data for Insights charts                  |
-| GET    | `/api/journal/{date}`    | Fetch journal entry for a given date                 |
-| POST   | `/api/journal`           | Save or update a journal entry (upsert)              |
-| GET    | `/api/etf/{symbol}`      | Proxy Yahoo Finance chart data for an ETF ticker     |
+| Method | Route                                  | Purpose                                              |
+|--------|----------------------------------------|------------------------------------------------------|
+| GET    | `/api/status`                          | Model phase, cycles logged, next period estimate     |
+| GET    | `/api/cycles`                          | All cycles (completed + active)                      |
+| GET    | `/api/cycles/active`                   | The current incomplete cycle                         |
+| POST   | `/api/cycles/dates`                    | Save period end and ovulation date for active cycle  |
+| POST   | `/api/cycles/start`                    | Open a new cycle                                     |
+| POST   | `/api/cycles/complete`                 | Close cycle, Bayesian update, new prediction         |
+| GET    | `/api/logs`                            | All daily logs joined with cycle number              |
+| POST   | `/api/logs`                            | Insert one daily log row                             |
+| GET    | `/api/predictions`                     | Stored model_runs rows                               |
+| POST   | `/api/predict`                         | Run prediction and store result                      |
+| GET    | `/api/insights`                        | Aggregated data for Insights charts                  |
+| GET    | `/api/journal/{date}`                  | Fetch journal entry for a given date                 |
+| POST   | `/api/journal`                         | Save or update a journal entry (upsert)              |
+| GET    | `/api/habits/{date}`                   | Fetch habits entry for a given date                  |
+| POST   | `/api/habits`                          | Save or update a habits entry (upsert)               |
+| GET    | `/api/etf/{symbol}/investments`        | Fetch saved investments for a ticker from DB         |
+| POST   | `/api/etf/investments`                 | Fetch closing price from Yahoo Finance and store     |
+| DELETE | `/api/etf/investments/{investment_id}` | Delete a stored investment                           |
+| GET    | `/api/etf/{symbol}`                    | Proxy Yahoo Finance chart data for an ETF ticker     |
 
 The ETF route accepts a `?range=1wk|1mo|1y` query parameter and maps it to
 Yahoo Finance interval values. It handles CORS, user-agent spoofing, and
@@ -188,14 +197,32 @@ All database interaction in one file. Uses raw `psycopg2` with a context-manager
 connection helper. No ORM — plain SQL for transparency and performance.
 
 Key functions:
+
+*Cycles*
 - `insert_cycle` / `complete_cycle` — cycle lifecycle writes
-- `insert_daily_log` — dynamic column builder for daily logs
 - `get_completed_cycles` / `get_active_cycle` / `get_all_cycles_raw` — cycle reads
+- `get_last_n_cycle_lengths` — returns cycle lengths as a plain list for the model
+
+*Daily logs*
+- `insert_daily_log` — dynamic column builder; accepts any subset of log columns as kwargs
 - `get_all_logs_with_cycle` — joined logs + cycle number for the Daily Logs tab
+
+*Habits*
+- `get_habits` — fetch one habits row by date; returns None if no entry exists
+- `upsert_habits` — insert or update water intake, prayers, Quran, to-dos, and project ideas for a date (ON CONFLICT DO UPDATE); wraps `todos` in `psycopg2.extras.Json` for JSONB storage
+
+*Journal*
+- `get_journal_entry` — fetch one journal entry by date; returns None if no entry exists
+- `upsert_journal_entry` — insert or update a journal entry (ON CONFLICT DO UPDATE)
+
+*ETF investments*
+- `get_etf_investments` — fetch all investments for a ticker symbol, ordered by date
+- `add_etf_investment` — insert a new investment row; computes `units = amount / price_on_date` and stores it alongside the amount, date, and notes; returns the new UUID
+- `delete_etf_investment` — delete an investment row by UUID
+
+*Model*
 - `get_insights_data` — four aggregation queries in one call for the Insights tab
 - `save_model_run` / `get_model_runs` — prediction audit trail
-- `get_journal_entry` — fetch one journal entry by date, returns None if empty
-- `upsert_journal_entry` — insert or update a journal entry (ON CONFLICT DO UPDATE)
 
 ---
 
@@ -272,18 +299,22 @@ Three-line React entry point. Mounts `<App />` into `#root`.
 
 **`src/App.jsx`**
 Multi-window pixel desktop shell. Manages three independent windows (Cycle
-Tracker, Journal, ETF Tracker), each with its own open/closed state, position,
-and z-index. Key systems:
+Tracker, Journal, ETF Tracker) plus the Home screen. Each window has its own
+open/closed state, position, and z-index. Key systems:
 
-- **Left dock** — three pixel SVG icons (house, crescent moon, notebook/chart).
-  Clicking toggles the corresponding window. Home icon closes all windows.
+- **Left dock** — four pixel SVG icons (house, crescent moon, notebook, bar chart).
+  Clicking toggles the corresponding window. Home icon closes all windows and
+  returns to the Home screen.
+- **Home screen** — shown whenever all windows are closed. Displays three live
+  widgets: Cycle summary, Journal preview, and ETF prices. Fades in with a
+  greeting based on time of day.
 - **AnimatedWindow** — wrapper that animates open/close using CSS transform +
   opacity transitions. On open: spring-bounces from the dock icon position to
   full size. On close: shrinks back toward the dock icon using `transformOrigin`
   set to the button's screen coordinates.
 - **Single global drag handler** — one `activeDrag` ref shared across all windows.
   `startDrag(e, pos, setPos)` records the offset; global `mousemove`/`mouseup`
-  listeners update the position. This avoids multiple competing event handlers.
+  listeners update the position.
 - **Z-index management** — a monotonic counter `zRef` increments on every focus
   event so the clicked window always comes to the front.
 
@@ -291,8 +322,9 @@ and z-index. Key systems:
 Single file with all `fetch()` calls. All paths prefixed with `/api`. Throws
 an `Error` with the server's `detail` message on non-2xx responses. Methods:
 `getStatus`, `getCycles`, `getActiveCycle`, `startCycle`, `completeCycle`,
-`getLogs`, `saveLog`, `getPredictions`, `runPredict`, `getInsights`,
-`getJournalEntry`, `saveJournalEntry`, `getETF`.
+`updateCycleDates`, `getLogs`, `saveLog`, `getPredictions`, `runPredict`,
+`getInsights`, `getJournalEntry`, `saveJournalEntry`, `getHabits`, `saveHabits`,
+`getETF`, `getETFInvestments`, `addETFInvestment`, `deleteETFInvestment`.
 
 **`src/theme.js`**
 Design token file. Exports the full colour palette (`C`), font constant,
@@ -309,7 +341,9 @@ Reusable pixel UI primitives: `Label`, `SectionLabel`, `Inp`, `Sel`,
 Daily entry form. Fields: date, flow intensity (0–5), cervical mucus type,
 weight, exercise, sleep hours, sleep quality, stress level, eight mood
 checkboxes, nine symptom checkboxes. Calculates `day_of_cycle` automatically
-from the active cycle start date before posting to `POST /api/logs`.
+from the active cycle start date before posting to `POST /api/logs`. Detects
+existing logs for the selected date (including rows added directly via SQL) and
+shows an overwrite confirmation before updating.
 
 **`src/components/CyclesTab.jsx`**
 Cycle lifecycle management. Active cycle panel shows start date, days elapsed,
@@ -327,9 +361,7 @@ intensity colour-coded red above 3. Default limit 300 rows.
 Stored predictions from `GET /api/predictions` displayed as cards, newest first.
 Each card shows model phase tag, personal cycle count, next length estimate,
 80% CI, next period date, ovulation estimate, fertile window, and CI width.
-Includes a collapsible model explanation panel that explains all three model
-phases, what each prediction field means, what features the model uses, and how
-to interpret the evaluation metrics (MAE, CI width, personal weight %).
+Includes a collapsible model explanation panel.
 
 **`src/components/InsightsTab.jsx`**
 Four Recharts visualisations: CI width trend, cycle length history with sleep
@@ -338,16 +370,26 @@ callout cards below the charts summarise top symptom, top mood, average sleep,
 average stress, phase progress, and prediction count.
 
 **`src/components/JournalWindow.jsx`**
-Personal daily journal as a floating window. Features: pixel-art title bar,
-◄ / ► navigation buttons to move one day back or forward, a date-picker for
-jumping to any past date, six weather emoji buttons (single-select), and a
-notebook-style textarea with pink ruled lines and a red left-margin line.
-Loads the entry for the current date on mount and on every date change via
-`GET /api/journal/{date}`. Saves via `POST /api/journal` (upsert). Shows
-the last-saved timestamp in the footer. Error messages display the exact failure
-reason (table not found, DB not connected, etc.) in a full-width banner that
-stays visible for 8 seconds. Entries are stored in PostgreSQL with TOAST
-compression — 10 years of daily entries use under 10 MB.
+Floating window with two tabs sharing the same date navigation:
+
+*JOURNAL tab* — pixel-art ruled textarea with pink lines and a red left-margin
+line. Date navigation with ◄ / ► buttons and a date-picker for jumping to any
+past date. Six weather emoji buttons (single-select). Saves via
+`POST /api/journal` (upsert). Shows last-saved timestamp and unsaved-changes
+indicator. Entries stored in PostgreSQL with TOAST compression — 10 years of
+daily entries use under 10 MB.
+
+*HABITS tab* — daily habit tracker for the same date. Sections:
+- **Water intake** — eight clickable droplets that fill left to right; click a
+  filled droplet to reduce the count
+- **Prayers & Quran** — pixel checkboxes for Fajr, Zuhr, Asr, Maghrib, Isha, and
+  a Quran recitation toggle; prayer completion count shown in the section title
+- **To-do today** — text input with Enter-key support; items have a pixel checkbox
+  for done/undone and a ✕ delete button; completed items show strikethrough
+- **Project ideas** — text input list with ♥ bullets and ✕ delete; no checkboxes
+
+Habits save independently from the journal entry via `POST /api/habits` (upsert
+by date). Each tab has its own save button and last-saved timestamp in the footer.
 
 **`src/components/ETFWindow.jsx`**
 Islamic ETF tracker showing live price charts for two funds:
@@ -358,12 +400,34 @@ Islamic ETF tracker showing live price charts for two funds:
 | IGDA.L   | Invesco Dow Jones Islamic Global Developed Markets | USD Acc  |
 
 Three time ranges: 1W (1-hour bars), 1M (daily bars), 1Y (daily bars). Each
-chart shows a reference line at the previous close, and a footer with range
-high/low, exchange name, and data point count. Auto-refreshes every 5 minutes.
-Data is fetched via the FastAPI proxy at `GET /api/etf/{symbol}?range=` which
-calls the Yahoo Finance v8 chart API and normalises the response — the browser
-never contacts Yahoo Finance directly (avoids CORS). Data is delayed 15–20
-minutes for LSE and SIX listings.
+chart shows a reference line at the previous close with a footer showing range
+high/low, exchange name, and data point count. Auto-refreshes every hour.
+Data is fetched via the FastAPI proxy which calls the Yahoo Finance v8 chart API
+— the browser never contacts Yahoo Finance directly (avoids CORS). Data is
+delayed 15–20 minutes for LSE and SIX listings.
+
+Each ETF has an **Investment panel** below the chart. Add an investment by
+entering an amount and date — the backend fetches the closing price on that date
+from Yahoo Finance, computes units, and persists the row. The panel shows a
+cumulative **Invested vs Current Value** chart using historical price data as the
+x-axis, so a single investment still produces a full time-series line.
+
+**`src/components/HomeWidgets.jsx`**
+Home screen shown when all windows are closed or when the Home dock button is
+clicked. Displays three read-only summary widgets that fade in with a time-of-day
+greeting:
+
+- **Cycle widget** — active cycle number, start date, current day, menstrual
+  phase (derived from day number: menstrual 1–5, follicular 6–13, ovulatory
+  14–16, luteal 17+), and next period prediction from the latest model run
+- **Journal widget** — today's date, weather selection, first line of today's
+  journal entry, and today's to-do list with pixel checkboxes showing done/undone
+  state (read-only; editing happens inside the Journal window)
+- **ETF widget** — current price and portfolio value for each tracked ETF,
+  fetched from the 1-week price history
+
+All widgets use the same pixel window chrome (title bar, RAISED bevel, C.frame
+border) as the main application windows.
 
 ---
 
@@ -389,9 +453,6 @@ createdb period_tracker
 
 # Automated setup (installs deps, schema, trains prior, builds frontend)
 bash setup.sh
-
-# Run the journal migration (separate from main schema)
-psql -d period_tracker -f journal_migration.sql
 ```
 
 ### Manual setup (step by step)
@@ -403,8 +464,9 @@ pip install -r requirements.txt
 # 2. Main database schema
 psql -d period_tracker -f schema.sql
 
-# 3. Journal table
+# 3. Additional tables
 psql -d period_tracker -f journal_migration.sql
+psql -d period_tracker -f habits_migration.sql
 
 # 4. Public data — optional but recommended
 #    Fehring/Marquette 2012:
@@ -497,18 +559,32 @@ python app.py --api-only
 
 ## Database schema
 
-Four tables and one view. `schema.sql` creates the first three; `journal_migration.sql` adds the fourth.
+Six tables and one view. `schema.sql` creates the first three; the migration
+files add the rest.
 
 **`cycles`** — one row per menstrual cycle. `cycle_length` and `period_duration`
 are generated columns (computed from dates, never go out of sync).
 
-**`daily_logs`** — one row per day. Flow intensity (0–5), cervical mucus type,
-moods as `TEXT[]`, nine boolean symptom flags, sleep hours, sleep quality (1–3),
-stress level (1–3), weight in kg, exercise minutes.
+**`daily_logs`** — one row per day logged in the Cycle Tracker. Flow intensity
+(0–5), cervical mucus type, moods as `TEXT[]`, nine boolean symptom flags, sleep
+hours, sleep quality (1–3), stress level (1–3), weight in kg, exercise minutes.
+Unique constraint on `(cycle_id, log_date)`.
 
 **`journal_entries`** — one row per calendar day. `entry_date` has a UNIQUE
 constraint. `weather` (VARCHAR 30) and `content` (TEXT, TOAST-compressed).
-`updated_at` is refreshed on every upsert.
+`updated_at` refreshed on every upsert.
+
+**`daily_habits`** — one row per calendar day, keyed by `habit_date` (UNIQUE).
+Stores water glass count (INTEGER), five prayer boolean flags (Fajr, Zuhr, Asr,
+Maghrib, Isha), Quran recitation flag, `todos` (JSONB array of `{text, done}`
+objects), and `project_ideas` (TEXT array). Completely independent from
+`daily_logs` — a habit entry does not require a cycle to be active.
+
+**`etf_investments`** — one row per investment entry. Stores ticker symbol,
+amount invested, investment date, closing price on that date (fetched from
+Yahoo Finance at insert time), and computed units (`amount / price_on_date`).
+The units field is used by the frontend to calculate current portfolio value
+against live prices.
 
 **`model_runs`** — audit trail. Every prediction stored with full `JSONB`
 payload, model phase string, and personal cycle count at the time of the run.
@@ -521,12 +597,13 @@ each symptom; dominant mood.
 
 ## Privacy
 
-All personal data (cycles, logs, journal entries) is stored locally in your
-PostgreSQL instance. Nothing is sent to any external server.
+All personal data (cycles, logs, journal entries, habits, investments) is stored
+locally in your PostgreSQL instance. Nothing is sent to any external server.
 
-The one exception is the ETF Tracker: live price data is fetched from Yahoo
-Finance via the FastAPI proxy. No personal data is included in those requests —
-they only ask for publicly available market prices by ticker symbol.
+The one exception is the ETF Tracker: live price data and historical investment
+prices are fetched from Yahoo Finance via the FastAPI proxy. No personal data is
+included in those requests — they only ask for publicly available market prices
+by ticker symbol.
 
 The public datasets (Fehring, mcPHASES) are used only during `--setup` and are
 not consulted again after that.

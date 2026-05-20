@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Self Care Journal — Architecture Diagrams</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --pink:    #FFD6E5;
+    --rose:    #E87090;
+    --deep:    #C4506A;
+    --maroon:  #7A1A38;
+    --dark:    #3A0018;
+    --mut:     #9A4060;
+    --green:   #5A8E72;
+    --sage:    #82ABA1;
+    --gold:    #C8A000;
+    --cream:   #FFF5F8;
+    --r1:      #FFF5F8;
+    --r2:      #FFE8F0;
+    --face:    #F090A8;
+    --grd:     #E8A0B8;
+    --sh:      #5A0020;
+    --blue:    #4A7A9B;
+    --lblue:   #A8C8E0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: linear-gradient(150deg, #FFD0E8 0%, #F4A8D0 18%, #E888BC 38%, #D870A8 58%, #C86098 78%, #B85088 100%);
+    background-attachment: fixed;
+    font-family: 'DM Mono', monospace;
+    color: var(--dark);
+    min-height: 100vh;
+    padding: 40px 24px 80px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Grid overlay */
+  body::before {
+    content:'';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+    background-size: 44px 44px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; }
+
+  /* ── Title ── */
+  .page-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 13px;
+    color: #fff;
+    text-shadow: 2px 2px 0 var(--maroon);
+    letter-spacing: .06em;
+    margin-bottom: 4px;
+  }
+  .page-sub {
+    font-size: 10px;
+    color: rgba(255,255,255,0.75);
+    letter-spacing: .04em;
+    margin-bottom: 40px;
+  }
+
+  /* ── Panels ── */
+  .panel {
+    background: rgba(255, 245, 248, 0.88);
+    backdrop-filter: blur(12px);
+    border: 2px solid var(--maroon);
+    box-shadow: 4px 4px 0 var(--sh), 0 12px 40px rgba(90,0,32,0.20);
+    margin-bottom: 32px;
+    overflow: hidden;
+  }
+  .panel-header {
+    background: var(--deep);
+    padding: 8px 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .panel-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: #fff;
+    letter-spacing: .08em;
+  }
+  .panel-body { padding: 24px 20px; }
+
+  /* ── Section label ── */
+  .section-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--mut);
+    letter-spacing: .06em;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--grd);
+  }
+
+  /* ════════════════════════════════════════════
+     SEQUENCE DIAGRAM
+  ════════════════════════════════════════════ */
+  .seq-wrap { overflow-x: auto; }
+  .seq {
+    display: grid;
+    grid-template-columns: 90px 1fr 90px 90px 90px 90px;
+    gap: 0;
+    min-width: 700px;
+  }
+
+  /* Actor boxes */
+  .actor {
+    text-align: center;
+    padding: 8px 4px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    letter-spacing: .04em;
+    border: 2px solid;
+    margin: 0 4px;
+    line-height: 1.6;
+  }
+  .actor.user    { background: var(--pink);  border-color: var(--maroon); color: var(--dark); }
+  .actor.react   { background: #D6EEF8;      border-color: #4A7A9B;       color: #1A3A5A; }
+  .actor.fastapi { background: #D6F0E0;      border-color: #3A7A52;       color: #1A4A2A; }
+  .actor.db      { background: #F0E8D6;      border-color: #8A6030;       color: #4A3010; }
+  .actor.yahoo   { background: #E8D6F0;      border-color: #6A3A8A;       color: #3A1A5A; }
+
+  /* Lifeline column */
+  .lifeline-row {
+    display: contents;
+  }
+  .ll {
+    border-right: 2px dashed;
+    min-height: 28px;
+    position: relative;
+  }
+  .ll.user    { border-color: var(--maroon); }
+  .ll.react   { border-color: #4A7A9B; }
+  .ll.fastapi { border-color: #3A7A52; }
+  .ll.db      { border-color: #8A6030; }
+  .ll.yahoo   { border-color: #6A3A8A; }
+
+  /* Message rows */
+  .msg-row {
+    display: contents;
+  }
+  .msg-row > * { padding: 4px 0; }
+
+  .msg-spacer { /* empty cell */ }
+
+  .msg-arrow {
+    grid-column: span 1;
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding: 2px 4px;
+  }
+
+  /* Arrow SVGs drawn with CSS */
+  .arrow-line {
+    position: relative;
+    font-size: 8px;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 3px 0;
+  }
+  .arrow-line::before {
+    content: '';
+    flex: 1;
+    height: 1.5px;
+    background: currentColor;
+    display: block;
+  }
+  .arrow-line::after {
+    content: '▶';
+    font-size: 7px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .arrow-line.ret::before { border-top: 1.5px dashed currentColor; background: none; }
+  .arrow-line.ret::after  { content: ''; }
+  .arrow-line.ret::before { order: 2; }
+  .arrow-text {
+    font-size: 7.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+  }
+
+  /* ════════════════════════════════════════════
+     SEQUENCE TABLE (cleaner approach)
+  ════════════════════════════════════════════ */
+  .seq-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  .seq-table th {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6.5px;
+    padding: 8px 10px;
+    text-align: center;
+    letter-spacing: .04em;
+    border-bottom: 2px solid var(--maroon);
+    white-space: nowrap;
+  }
+  .th-user    { background: rgba(255,208,232,0.7); color: var(--dark); }
+  .th-react   { background: rgba(180,220,240,0.7); color: #1A3A5A; }
+  .th-fastapi { background: rgba(180,228,200,0.7); color: #1A4A2A; }
+  .th-db      { background: rgba(240,220,180,0.7); color: #4A3010; }
+  .th-yahoo   { background: rgba(224,210,240,0.7); color: #3A1A5A; }
+
+  .seq-table td {
+    padding: 0;
+    border: none;
+    vertical-align: middle;
+  }
+  .seq-row { display: table-row; }
+
+  /* Step number + label col */
+  .step-num {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    color: #fff;
+    background: var(--deep);
+    padding: 4px 6px;
+    text-align: center;
+    border-right: 1px solid var(--grd);
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  /* Lifeline cells with optional arrow */
+  .cell {
+    width: 130px;
+    min-width: 100px;
+    height: 36px;
+    border-right: 1.5px dashed var(--grd);
+    position: relative;
+    padding: 0;
+  }
+  .cell:last-child { border-right: none; }
+
+  /* Colored lifeline line through center */
+  .cell::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: 0; bottom: 0;
+    width: 2px;
+    background: currentColor;
+    opacity: 0.18;
+    transform: translateX(-50%);
+  }
+  .cell.user-ll  { color: var(--maroon); }
+  .cell.react-ll { color: #4A7A9B; }
+  .cell.api-ll   { color: #3A7A52; }
+  .cell.db-ll    { color: #8A6030; }
+  .cell.yahoo-ll { color: #6A3A8A; }
+
+  /* Arrow drawn inside cell using SVG */
+  .cell svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: visible; }
+
+  /* Section rows (group labels) */
+  .group-row td {
+    background: var(--r2);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    color: var(--mut);
+    letter-spacing: .06em;
+    padding: 5px 10px;
+    border-top: 1px solid var(--grd);
+    border-bottom: 1px solid var(--grd);
+  }
+
+  /* Alternating row bg */
+  .seq-row:nth-child(even) .cell { background: rgba(255,232,240,0.25); }
+  .seq-row:nth-child(odd)  .cell { background: rgba(255,255,255,0.10); }
+
+  /* ════════════════════════════════════════════
+     DATE FLOW DIAGRAM
+  ════════════════════════════════════════════ */
+  .date-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .flow-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    min-height: 52px;
+  }
+  .flow-label {
+    width: 130px;
+    flex-shrink: 0;
+    padding: 8px 10px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    color: var(--mut);
+    letter-spacing: .04em;
+    display: flex;
+    align-items: center;
+    border-right: 2px solid var(--grd);
+    background: rgba(255,232,240,0.3);
+    line-height: 1.8;
+    text-align: right;
+    justify-content: flex-end;
+  }
+  .flow-cells {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    overflow-x: auto;
+  }
+
+  /* Date box */
+  .dbox {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    font-size: 9.5px;
+    font-weight: 500;
+    white-space: nowrap;
+    border: 2px solid;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .dbox-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 5.5px;
+    letter-spacing: .04em;
+    opacity: 0.75;
+    text-transform: uppercase;
+  }
+  .dbox-val {
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .dbox.start    { background: rgba(200,230,210,0.8); border-color: var(--green);  color: var(--green); }
+  .dbox.period   { background: rgba(240,180,200,0.8); border-color: var(--deep);   color: var(--deep); }
+  .dbox.ov       { background: rgba(200,220,240,0.8); border-color: var(--blue);   color: var(--blue); }
+  .dbox.luteal   { background: rgba(240,220,180,0.8); border-color: #8A6030;       color: #5A3A10; }
+  .dbox.end      { background: rgba(220,190,240,0.8); border-color: #6A3A8A;       color: #3A1A5A; }
+  .dbox.pred     { background: rgba(255,240,180,0.8); border-color: var(--gold);   color: #5A4A00; border-style: dashed; }
+  .dbox.log      { background: rgba(255,224,232,0.7); border-color: var(--rose);   color: var(--maroon); }
+  .dbox.model    { background: rgba(200,240,220,0.7); border-color: var(--sage);   color: #2A5A42; }
+  .dbox.inv      { background: rgba(230,210,255,0.7); border-color: #6A3A8A;       color: #3A1A5A; }
+  .dbox.journal  { background: rgba(255,235,200,0.7); border-color: #9A6030;       color: #5A3010; }
+
+  /* Arrow between boxes */
+  .farrow {
+    color: var(--mut);
+    font-size: 14px;
+    flex-shrink: 0;
+    line-height: 1;
+    align-self: center;
+  }
+  .farrow.down { transform: rotate(90deg); }
+
+  /* Timeline bar */
+  .timeline {
+    height: 8px;
+    border-radius: 0;
+    flex: 1;
+    min-width: 40px;
+    position: relative;
+    align-self: center;
+  }
+  .tl-period  { background: linear-gradient(90deg, var(--deep), var(--rose)); }
+  .tl-follic  { background: linear-gradient(90deg, #A8C8E0, #4A7A9B); }
+  .tl-ov      { background: var(--gold); width: 12px; min-width: 12px; flex: none; border-radius: 0; }
+  .tl-luteal  { background: linear-gradient(90deg, #C8A850, #8A6030); }
+
+  /* Computed fields display */
+  .computed {
+    background: rgba(200,240,220,0.5);
+    border: 1px solid var(--sage);
+    padding: 3px 8px;
+    font-size: 8.5px;
+    color: #2A5A42;
+    white-space: nowrap;
+    align-self: center;
+    flex-shrink: 0;
+  }
+  .computed .clabel {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 5px;
+    color: var(--sage);
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  /* Divider */
+  .flow-divider {
+    height: 1px;
+    background: var(--grd);
+    margin: 2px 0;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9px;
+    color: var(--mut);
+  }
+  .legend-dot {
+    width: 12px; height: 12px;
+    border: 2px solid;
+    flex-shrink: 0;
+  }
+
+  /* Phase badges */
+  .phase-badge {
+    display: inline-block;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 6px;
+    padding: 3px 7px;
+    letter-spacing: .04em;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .phase-cs  { background: rgba(240,180,200,0.8); color: var(--maroon); border: 1px solid var(--deep); }
+  .phase-bay { background: rgba(200,220,240,0.8); color: #1A3A5A;      border: 1px solid var(--blue); }
+  .phase-lstm{ background: rgba(200,240,220,0.8); color: #1A4A2A;      border: 1px solid var(--green); }
+
+  /* Note boxes */
+  .note {
+    background: rgba(255,248,200,0.8);
+    border: 1px solid var(--gold);
+    border-left: 4px solid var(--gold);
+    padding: 8px 12px;
+    font-size: 9px;
+    color: #5A4A00;
+    line-height: 1.7;
+    margin-top: 12px;
+  }
+  .note strong { font-family: 'Press Start 2P', monospace; font-size: 6px; }
+
+  /* Pixel star decoration */
+  .pstar { color: #FFD700; text-shadow: 0 0 8px rgba(255,215,0,0.6); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="page-title">
+    <span class="pstar">★</span> SELF CARE JOURNAL
+    <span class="pstar">★</span>
+  </div>
+  <div class="page-sub">Sequence &amp; Date Flow Diagrams — System Architecture</div>
+
+  <!-- ══════════════════════════════════════════════════════
+       DIAGRAM 1: SEQUENCE DIAGRAM
+  ══════════════════════════════════════════════════════ -->
+  <div class="panel">
+    <div class="panel-header">
+      <svg width="10" height="10" viewBox="0 0 10 10"><rect x="0" y="6" width="3" height="4" fill="white" opacity="0.9"/><rect x="3.5" y="3" width="3" height="7" fill="white" opacity="0.9"/><rect x="7" y="1" width="3" height="9" fill="white" opacity="0.9"/></svg>
+      <span class="panel-title">SEQUENCE DIAGRAM — REQUEST &amp; DATA FLOW</span>
+    </div>
+    <div class="panel-body">
+      <div class="section-label">HOW EACH WINDOW COMMUNICATES WITH THE BACKEND</div>
+
+      <div class="seq-wrap">
+      <table class="seq-table">
+        <colgroup>
+          <col style="width:60px"/>
+          <col style="width:110px"/><!-- User -->
+          <col style="width:130px"/><!-- React -->
+          <col style="width:130px"/><!-- FastAPI -->
+          <col style="width:120px"/><!-- PostgreSQL -->
+          <col style="width:120px"/><!-- Yahoo Finance -->
+        </colgroup>
+        <thead>
+          <tr>
+            <th style="background:var(--r2); color:var(--mut); font-size:6px; padding:8px 6px;">STEP</th>
+            <th class="th-user">👤 USER</th>
+            <th class="th-react">⚛ REACT / VITE</th>
+            <th class="th-fastapi">🐍 FASTAPI</th>
+            <th class="th-db">🗄 POSTGRESQL</th>
+            <th class="th-yahoo">📈 YAHOO FINANCE</th>
+          </tr>
+        </thead>
+        <tbody id="seq-body"></tbody>
+      </table>
+      </div>
+
+      <div class="note">
+        <strong>PROXY NOTE</strong><br/>
+        All /api/* requests go through the Vite dev-server proxy (port 5173 → 8000) in dev mode,
+        or are served directly by FastAPI in production. The browser never contacts Yahoo Finance —
+        FastAPI is the sole proxy for ETF data to avoid CORS.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       DIAGRAM 2: DATE FLOW
+  ══════════════════════════════════════════════════════ -->
+  <div class="panel">
+    <div class="panel-header">
+      <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" fill="none" stroke="white" stroke-width="1.5"/><rect x="3" y="0" width="1" height="3" fill="white"/><rect x="6" y="0" width="1" height="3" fill="white"/><rect x="1" y="4" width="8" height="1" fill="white" opacity="0.6"/></svg>
+      <span class="panel-title">DATE FLOW DIAGRAM — CYCLE &amp; INVESTMENT TIMELINE</span>
+    </div>
+    <div class="panel-body">
+      <div class="section-label">HOW DATES ARE RECORDED, COMPUTED, AND USED FOR PREDICTIONS</div>
+
+      <div class="date-flow" id="date-flow"></div>
+
+      <!-- Phase thresholds legend -->
+      <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--grd);">
+        <div class="section-label">ML MODEL PHASE — BASED ON COMPLETED CYCLE COUNT</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-size:9px; color:var(--mut);">
+          <span>0 – 2 cycles</span><span class="phase-badge phase-cs">COLD START</span>
+          <span style="margin-left:12px;">3 – 7 cycles</span><span class="phase-badge phase-bay">BAYESIAN</span>
+          <span style="margin-left:12px;">8+ cycles</span><span class="phase-badge phase-lstm">LSTM</span>
+        </div>
+        <div style="margin-top:10px; font-size:9px; color:var(--mut); line-height:1.8;">
+          Each model phase uses the dates and lengths stored in the <code>cycles</code> table.
+          The Bayesian update runs immediately after <strong>POST /api/cycles/complete</strong>.
+          The LSTM fine-tune runs in a background thread to avoid blocking the response.
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(200,230,210,0.8);border-color:var(--green)"></div>Cycle start</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(240,180,200,0.8);border-color:var(--deep)"></div>Period / menstruation</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(200,220,240,0.8);border-color:var(--blue)"></div>Ovulation</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(240,220,180,0.8);border-color:#8A6030"></div>Luteal phase</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(255,240,180,0.8);border-color:var(--gold);border-style:dashed"></div>Predicted (model output)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(255,224,232,0.7);border-color:var(--rose)"></div>Daily log entry</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(200,240,220,0.7);border-color:var(--sage)"></div>Model run stored</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(255,235,200,0.7);border-color:#9A6030"></div>Journal entry</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(230,210,255,0.7);border-color:#6A3A8A"></div>ETF investment</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// Build sequence diagram rows dynamically
+// ═══════════════════════════════════════════════════════════════
+
+const COLS = ['user','react','fastapi','db','yahoo']
+const COL  = { user:1, react:2, fastapi:3, db:4, yahoo:5 }
+
+// seq steps: { group?, from, to, label, ret?, color? }
+const seqSteps = [
+  { group: '── APP STARTUP ──────────────────────────────────────────────────────────────' },
+  { from:'user',    to:'react',   label:'python app.py → PyWebView opens localhost:8000' },
+  { from:'react',   to:'fastapi', label:'GET /api/status' },
+  { from:'fastapi', to:'db',      label:'SELECT COUNT(*) FROM cycles WHERE is_complete=TRUE' },
+  { from:'db',      to:'fastapi', label:'{ personal_cycles, model_phase }', ret:true },
+  { from:'fastapi', to:'react',   label:'{ phase, next_period_est }', ret:true },
+  { from:'react',   to:'fastapi', label:'GET /api/cycles/active' },
+  { from:'fastapi', to:'db',      label:'SELECT ... FROM cycles WHERE is_complete=FALSE' },
+  { from:'db',      to:'fastapi', label:'active cycle row or null', ret:true },
+  { from:'fastapi', to:'react',   label:'active cycle object', ret:true },
+
+  { group: '── LOG TODAY (daily symptoms) ───────────────────────────────────────────────' },
+  { from:'user',    to:'react',   label:'select date → check for existing log' },
+  { from:'react',   to:'fastapi', label:'GET /api/logs?limit=300' },
+  { from:'fastapi', to:'db',      label:'SELECT dl.*, c.cycle_number FROM daily_logs JOIN cycles' },
+  { from:'db',      to:'fastapi', label:'list of log rows', ret:true },
+  { from:'fastapi', to:'react',   label:'logs[]', ret:true },
+  { from:'react',   to:'user',    label:'show LOG EXISTS badge if date already has entry', ret:true },
+  { from:'user',    to:'react',   label:'fill form → click SAVE / UPDATE' },
+  { from:'react',   to:'user',    label:'if existing: show yellow confirmation banner', ret:true },
+  { from:'user',    to:'react',   label:'confirm YES, UPDATE' },
+  { from:'react',   to:'fastapi', label:'POST /api/logs  { cycle_id, log_date, ... }' },
+  { from:'fastapi', to:'db',      label:'INSERT INTO daily_logs ... ON CONFLICT DO NOTHING' },
+  { from:'db',      to:'fastapi', label:'OK', ret:true },
+  { from:'fastapi', to:'react',   label:'{ status: saved }', ret:true },
+
+  { group: '── MY CYCLES (lifecycle) ─────────────────────────────────────────────────────' },
+  { from:'user',    to:'react',   label:'enter period end / ovulation dates → SAVE DATES' },
+  { from:'react',   to:'fastapi', label:'POST /api/cycles/dates  { cycle_id, period_end, ovulation_date }' },
+  { from:'fastapi', to:'db',      label:'UPDATE cycles SET period_end=?, ovulation_date=? WHERE id=?' },
+  { from:'db',      to:'fastapi', label:'OK', ret:true },
+  { from:'user',    to:'react',   label:'enter cycle end date → MARK COMPLETE' },
+  { from:'react',   to:'fastapi', label:'POST /api/cycles/complete  { cycle_id, end_date }' },
+  { from:'fastapi', to:'db',      label:'UPDATE cycles SET end_date=?, is_complete=TRUE' },
+  { from:'db',      to:'fastapi', label:'OK', ret:true },
+  { from:'fastapi', to:'fastapi', label:'Bayesian update (conjugate Gamma-Poisson)' },
+  { from:'fastapi', to:'fastapi', label:'generate prediction → save_model_run()' },
+  { from:'fastapi', to:'db',      label:'INSERT INTO model_runs (predictions JSONB)' },
+  { from:'db',      to:'fastapi', label:'OK', ret:true },
+  { from:'fastapi', to:'react',   label:'{ prediction: { next_period_est, ci_lower, ci_upper } }', ret:true },
+
+  { group: '── JOURNAL ──────────────────────────────────────────────────────────────────' },
+  { from:'user',    to:'react',   label:'open Journal window / navigate to date' },
+  { from:'react',   to:'fastapi', label:'GET /api/journal/2025-05-20' },
+  { from:'fastapi', to:'db',      label:'SELECT entry_date, weather, content FROM journal_entries WHERE entry_date=?' },
+  { from:'db',      to:'fastapi', label:'row or empty', ret:true },
+  { from:'fastapi', to:'react',   label:'{ content, weather, last_saved }', ret:true },
+  { from:'react',   to:'user',    label:'show SAVED badge if entry exists', ret:true },
+  { from:'user',    to:'react',   label:'write entry, select weather → SAVE' },
+  { from:'react',   to:'fastapi', label:'POST /api/journal  { date, weather, content }' },
+  { from:'fastapi', to:'db',      label:'INSERT INTO journal_entries ... ON CONFLICT (entry_date) DO UPDATE' },
+  { from:'db',      to:'fastapi', label:'OK', ret:true },
+  { from:'fastapi', to:'react',   label:'{ status: saved }', ret:true },
+
+  { group: '── ETF TRACKER ──────────────────────────────────────────────────────────────' },
+  { from:'user',    to:'react',   label:'open ETF window / select range 1W|1M|1Y' },
+  { from:'react',   to:'fastapi', label:'GET /api/etf/ISWD.SW?range=1mo' },
+  { from:'fastapi', to:'yahoo',   label:'GET query1.finance.yahoo.com/v8/finance/chart/ISWD.SW' },
+  { from:'yahoo',   to:'fastapi', label:'timestamps[], closes[], meta{currency, price}', ret:true },
+  { from:'fastapi', to:'react',   label:'{ data[], current, prev_close, currency }', ret:true },
+  { from:'react',   to:'fastapi', label:'GET /api/etf/ISWD.SW/investments' },
+  { from:'fastapi', to:'db',      label:'SELECT * FROM etf_investments WHERE symbol=?' },
+  { from:'db',      to:'fastapi', label:'investment rows[]', ret:true },
+  { from:'fastapi', to:'react',   label:'investments[]  (units = amount/price_on_date)', ret:true },
+  { from:'user',    to:'react',   label:'enter amount + purchase date → SAVE investment' },
+  { from:'react',   to:'fastapi', label:'POST /api/etf/investments  { symbol, amount, investment_date }' },
+  { from:'fastapi', to:'yahoo',   label:'fetch historical OHLC for investment_date window' },
+  { from:'yahoo',   to:'fastapi', label:'closing price on nearest trading day', ret:true },
+  { from:'fastapi', to:'db',      label:'INSERT INTO etf_investments (price_on_date → units generated)' },
+  { from:'db',      to:'fastapi', label:'{ id }', ret:true },
+  { from:'fastapi', to:'react',   label:'{ id, price_on_date, units }', ret:true },
+]
+
+const tbody = document.getElementById('seq-body')
+let stepNum = 0
+
+const colColors = {
+  user: 'rgba(255,208,232,0.35)', react: 'rgba(180,220,240,0.35)',
+  fastapi: 'rgba(180,228,200,0.35)', db: 'rgba(240,220,180,0.35)',
+  yahoo: 'rgba(224,210,240,0.35)'
+}
+const arrowColors = {
+  user:'#7A1A38', react:'#2A5A8A', fastapi:'#2A6A42', db:'#6A4A10', yahoo:'#4A1A7A'
+}
+
+seqSteps.forEach(step => {
+  if (step.group) {
+    const tr = document.createElement('tr')
+    tr.className = 'group-row'
+    tr.innerHTML = `<td colspan="6">${step.group}</td>`
+    tbody.appendChild(tr)
+    return
+  }
+
+  stepNum++
+  const tr = document.createElement('tr')
+  tr.className = 'seq-row'
+
+  const fromIdx = COL[step.from]
+  const toIdx   = COL[step.to]
+  const goRight = toIdx > fromIdx
+  const color   = arrowColors[step.ret ? step.to : step.from]
+
+  // Step number cell
+  let html = `<td class="step-num">${stepNum}</td>`
+
+  // Build 5 cells (one per actor column)
+  for (let i = 1; i <= 5; i++) {
+    const actorKey = COLS[i-1]
+    const bg = colColors[actorKey]
+
+    // Does this cell contain the arrow?
+    const isArrowStart = goRight  ? i === fromIdx : i === toIdx
+    const isArrowEnd   = goRight  ? i === toIdx   : i === fromIdx
+    const isSpanning   = (goRight && i > fromIdx && i < toIdx) || (!goRight && i < fromIdx && i > toIdx)
+
+    let cellContent = ''
+
+    if (isArrowStart || isSpanning || isArrowEnd) {
+      // Render the arrow + label spanning from→to
+      if (i === Math.min(fromIdx, toIdx)) {
+        // Draw the full arrow as an absolutely positioned element spanning multiple cells
+        const span = Math.abs(toIdx - fromIdx)
+        const isDashed = step.ret
+        const arrowTip = goRight ? '▶' : '◀'
+        cellContent = `
+          <div style="
+            position:absolute; top:50%; transform:translateY(-50%);
+            left:${goRight ? '50%' : 'auto'};
+            right:${goRight ? 'auto' : '50%'};
+            width:calc(${span * 100}% + ${span * 2}px);
+            z-index:10;
+            display:flex; flex-direction:column; align-items:${goRight ? 'flex-end' : 'flex-start'};
+            pointer-events:none;
+          ">
+            <div style="
+              font-size:7.5px; color:${color}; font-weight:500; white-space:nowrap;
+              margin-bottom:2px; max-width:${span * 120}px;
+              overflow:hidden; text-overflow:ellipsis;
+              padding: 0 4px;
+            ">${step.label}</div>
+            <div style="display:flex; align-items:center; width:100%;">
+              ${!goRight ? `<span style="color:${color};font-size:8px;line-height:1">◀</span>` : ''}
+              <div style="flex:1; height:1.5px; background:${color}; ${isDashed ? 'background:none; border-top:1.5px dashed '+color+';' : ''}"></div>
+              ${goRight ? `<span style="color:${color};font-size:8px;line-height:1">▶</span>` : ''}
+            </div>
+          </div>`
+      }
+    }
+
+    html += `<td class="cell ${actorKey}-ll" style="background:${bg}; position:relative; height:44px;">${cellContent}</td>`
+  }
+
+  tr.innerHTML = html
+  tbody.appendChild(tr)
+})
+
+// ═══════════════════════════════════════════════════════════════
+// Build date flow diagram
+// ═══════════════════════════════════════════════════════════════
+
+const flowRows = [
+  {
+    label: 'CYCLE\nSTART',
+    cells: [
+      { type:'dbox', cls:'start', label:'start_date', val:'e.g. 2025-03-04' },
+      { type:'arrow', sym:'→' },
+      { type:'note-inline', text:'User opens new cycle via POST /api/cycles/start — period_start required, period_end optional at this stage' },
+    ]
+  },
+  {
+    label: 'PERIOD\nWINDOW',
+    cells: [
+      { type:'dbox', cls:'period', label:'period_start', val:'Day 1' },
+      { type:'arrow', sym:'→' },
+      { type:'timeline', cls:'tl-period', w:80 },
+      { type:'arrow', sym:'→' },
+      { type:'dbox', cls:'period', label:'period_end', val:'Day 5–7' },
+      { type:'arrow', sym:'→' },
+      { type:'computed', label:'GENERATED', val:'period_duration = period_end − period_start + 1' },
+    ]
+  },
+  {
+    label: 'FOLLICULAR\nPHASE',
+    cells: [
+      { type:'dbox', cls:'ov', label:'after period_end', val:'Day 6+' },
+      { type:'arrow', sym:'→' },
+      { type:'timeline', cls:'tl-follic', w:120 },
+      { type:'arrow', sym:'→' },
+      { type:'dbox', cls:'ov', label:'ovulation_date', val:'Day ~14' },
+      { type:'arrow', sym:'→' },
+      { type:'note-inline', text:'Logged via POST /api/cycles/dates — does not complete the cycle' },
+    ]
+  },
+  {
+    label: 'OVULATION\nDAY',
+    cells: [
+      { type:'timeline', cls:'tl-ov', w:12 },
+      { type:'arrow', sym:'→' },
+      { type:'dbox', cls:'ov', label:'ovulation_date', val:'confirmed day' },
+      { type:'arrow', sym:'→' },
+      { type:'computed', label:'DERIVED', val:'fertile_window = ovulation − 5 days → ovulation day' },
+    ]
+  },
+  {
+    label: 'LUTEAL\nPHASE',
+    cells: [
+      { type:'dbox', cls:'luteal', label:'post ovulation', val:'Day 15+' },
+      { type:'arrow', sym:'→' },
+      { type:'timeline', cls:'tl-luteal', w:100 },
+      { type:'arrow', sym:'→' },
+      { type:'dbox', cls:'end', label:'end_date', val:'Day 28–40+' },
+      { type:'arrow', sym:'→' },
+      { type:'computed', label:'GENERATED', val:'luteal_length = end_date − ovulation_date' },
+    ]
+  },
+  {
+    label: 'CYCLE\nCOMPLETE',
+    cells: [
+      { type:'dbox', cls:'end', label:'end_date', val:'= next period start' },
+      { type:'arrow', sym:'→' },
+      { type:'computed', label:'GENERATED', val:'cycle_length = end_date − start_date' },
+      { type:'arrow', sym:'→' },
+      { type:'dbox', cls:'model', label:'POST /api/cycles/complete', val:'Bayesian update triggered' },
+    ]
+  },
+  {
+    label: 'DAILY\nLOGS',
+    cells: [
+      { type:'dbox', cls:'log', label:'log_date', val:'any day in cycle' },
+      { type:'arrow', sym:'→' },
+      { type:'computed', label:'COMPUTED', val:'day_of_cycle = log_date − start_date + 1' },
+      { type:'arrow', sym:'→' },
+      { type:'note-inline', text:'flow, mood, symptoms, sleep, stress → stored in daily_logs; checked for duplicate before saving' },
+    ]
+  },
+  {
+    label: 'PREDICTION\nOUTPUT',
+    cells: [
+      { type:'dbox', cls:'model', label:'run_date (NOW)', val:'model_runs table' },
+      { type:'arrow', sym:'→' },
+      { type:'dbox', cls:'pred', label:'next_period_est', val:'start_date + point_estimate' },
+      { type:'arrow', sym:'→' },
+      { type:'dbox', cls:'pred', label:'ovulation_est', val:'next_period − 14 days' },
+      { type:'arrow', sym:'→' },
+      { type:'dbox', cls:'pred', label:'80% CI', val:'[ci_lower, ci_upper]' },
+    ]
+  },
+  {
+    label: 'JOURNAL\nENTRY',
+    cells: [
+      { type:'dbox', cls:'journal', label:'entry_date', val:'any calendar date' },
+      { type:'arrow', sym:'→' },
+      { type:'note-inline', text:'GET /api/journal/{date} loads existing or returns empty · POST /api/journal upserts (ON CONFLICT entry_date DO UPDATE) · weather + content stored; overwrite requires confirmation' },
+    ]
+  },
+  {
+    label: 'ETF\nINVESTMENT',
+    cells: [
+      { type:'dbox', cls:'inv', label:'investment_date', val:'purchase date' },
+      { type:'arrow', sym:'→' },
+      { type:'dbox', cls:'inv', label:'price_on_date', val:'fetched from Yahoo Finance' },
+      { type:'arrow', sym:'→' },
+      { type:'computed', label:'GENERATED', val:'units = amount ÷ price_on_date' },
+      { type:'arrow', sym:'→' },
+      { type:'dbox', cls:'inv', label:'current_value', val:'units × live_price (frontend)' },
+    ]
+  },
+]
+
+const flowContainer = document.getElementById('date-flow')
+
+flowRows.forEach((row, ri) => {
+  if (ri > 0) {
+    const div = document.createElement('div')
+    div.className = 'flow-divider'
+    flowContainer.appendChild(div)
+  }
+
+  const rowDiv = document.createElement('div')
+  rowDiv.className = 'flow-row'
+
+  // Label
+  const labelDiv = document.createElement('div')
+  labelDiv.className = 'flow-label'
+  labelDiv.style.cssText = `white-space:pre-line`
+  labelDiv.textContent = row.label
+  rowDiv.appendChild(labelDiv)
+
+  // Cells
+  const cellsDiv = document.createElement('div')
+  cellsDiv.className = 'flow-cells'
+
+  row.cells.forEach(cell => {
+    if (cell.type === 'dbox') {
+      const d = document.createElement('div')
+      d.className = `dbox ${cell.cls}`
+      d.innerHTML = `<span class="dbox-label">${cell.label}</span><span class="dbox-val">${cell.val}</span>`
+      cellsDiv.appendChild(d)
+    } else if (cell.type === 'arrow') {
+      const a = document.createElement('div')
+      a.className = 'farrow'
+      a.textContent = cell.sym
+      cellsDiv.appendChild(a)
+    } else if (cell.type === 'timeline') {
+      const t = document.createElement('div')
+      t.className = `timeline ${cell.cls}`
+      if (cell.w) t.style.width = cell.w + 'px'
+      cellsDiv.appendChild(t)
+    } else if (cell.type === 'computed') {
+      const c = document.createElement('div')
+      c.className = 'computed'
+      c.innerHTML = `<span class="clabel">${cell.label}</span>${cell.val}`
+      cellsDiv.appendChild(c)
+    } else if (cell.type === 'note-inline') {
+      const n = document.createElement('div')
+      n.style.cssText = 'font-size:8.5px; color:var(--mut); line-height:1.7; max-width:360px; padding:4px 8px; background:rgba(255,248,240,0.5); border-left:3px solid var(--gold); flex-shrink:0;'
+      n.textContent = cell.text
+      cellsDiv.appendChild(n)
+    }
+  })
+
+  rowDiv.appendChild(cellsDiv)
+  flowContainer.appendChild(rowDiv)
+})
+</script>
+</body>
+</html>

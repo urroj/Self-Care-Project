@@ -97,34 +97,6 @@ CREATE TABLE IF NOT EXISTS model_runs (
     metrics         JSONB
 );
 
-------------------------------------------------------------------------------
--- Add Data
-------------------------------------------------------------------------------
-INSERT INTO cycles (cycle_number, start_date, period_start, period_end)
-VALUES (3, '2025-03-04', '2025-03-04', '2025-03-09'),
-       (4, '2025-04-07', '2025-04-07', '2025-04-11');
-
-INSERT INTO cycles (cycle_number, start_date, period_start)
-VALUES(5, '2025-05-15', '2025-05-15');
-
-
--- Mark it complete once next period starts
-UPDATE cycles
-SET end_date = '2025-05-14', is_complete = TRUE
-WHERE cycle_number = 4;
-
---insert some daily logs for cycle 5 (ongoing)
-insert into daily_logs (id, cycle_id, log_date, day_of_cycle, flow_intensity, moods,
-                         sleep_hours, sleep_quality, stress_level, weight_kg)
-values (gen_random_uuid(), (select id from cycles where cycle_number = 5), '2025-05-17', 3, 3,
-         ARRAY['irritable', 'tired'],7.0, 2, 2, 59.0);
-
--- values: happy, calm, anxious, sad, irritable, energetic, depressed, neutral,tired
-
-
-select * from daily_logs;
-
-
 -- ---------------------------------------------------------------------------
 -- Convenience view: one summary row per completed cycle
 -- ---------------------------------------------------------------------------
@@ -192,5 +164,40 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_journal_entry_date
     ON journal_entries (entry_date);
 
 
-select * from daily_logs;
+-- etf_investments_migration.sql
+-- Run once: psql -d period_tracker -f etf_investments_migration.sql
+-- Stores user investment entries per ETF symbol.
 
+CREATE TABLE IF NOT EXISTS etf_investments (
+    id              UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+    symbol          VARCHAR(20)   NOT NULL,
+    amount          NUMERIC(14,4) NOT NULL,        -- amount invested in ETF currency
+    investment_date DATE          NOT NULL,
+    price_on_date   NUMERIC(14,4),                 -- fetched from Yahoo Finance at save time
+    units           NUMERIC(18,8) GENERATED ALWAYS AS
+                        (CASE WHEN price_on_date > 0 THEN amount / price_on_date ELSE NULL END) STORED,
+    notes           TEXT          NOT NULL DEFAULT '',
+    created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_etf_inv_symbol ON etf_investments (symbol, investment_date DESC);
+
+select * from etf_investments order by investment_date desc limit 5;
+
+-- db/habits_migration.sql
+CREATE TABLE IF NOT EXISTS daily_habits (
+  id             UUID      PRIMARY KEY DEFAULT gen_random_uuid(),
+  habit_date     DATE      NOT NULL UNIQUE,
+  water_glasses  INTEGER   DEFAULT 0,
+  prayer_fajr    BOOLEAN   DEFAULT FALSE,
+  prayer_zuhr    BOOLEAN   DEFAULT FALSE,
+  prayer_asr     BOOLEAN   DEFAULT FALSE,
+  prayer_maghrib BOOLEAN   DEFAULT FALSE,
+  prayer_isha    BOOLEAN   DEFAULT FALSE,
+  quran_recited  BOOLEAN   DEFAULT FALSE,
+  todos          JSONB     DEFAULT '[]',
+  project_ideas  TEXT[]    DEFAULT '{}',
+  updated_at     TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_habits ON daily_habits (id, habit_date DESC);
