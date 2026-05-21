@@ -66,26 +66,6 @@ def get_all_cycles_raw() -> list[dict]:
     return _fetch("SELECT * FROM cycles ORDER BY cycle_number ASC")
 
 
-def get_daily_logs(cycle_id: str) -> list[dict]:
-    return _fetch(
-        "SELECT * FROM daily_logs WHERE cycle_id = %s ORDER BY log_date ASC",
-        (cycle_id,)
-    )
-
-
-def get_daily_logs_for_cycle_number(cycle_number: int) -> list[dict]:
-    return _fetch(
-        """
-        SELECT dl.*
-        FROM daily_logs dl
-        JOIN cycles c ON c.id = dl.cycle_id
-        WHERE c.cycle_number = %s
-        ORDER BY dl.log_date ASC
-        """,
-        (cycle_number,)
-    )
-
-
 def get_last_n_cycle_lengths(n: int = 12) -> list[float]:
     """Return the last n completed cycle lengths as a plain list."""
     rows = _fetch(

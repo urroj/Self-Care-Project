@@ -22,9 +22,10 @@ from __future__ import annotations
 
 import sys
 import threading
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any
+
+import requests
 
 # ── ensure project root is on sys.path when run directly ────────────────────
 ROOT = Path(__file__).resolve().parent.parent
@@ -459,24 +460,21 @@ def add_investment(data: ETFInvestmentIn):
     Fetch the closing price on investment_date from Yahoo Finance,
     then persist the investment with units calculated automatically.
     """
-    import requests as _req
-
     # Fetch price on investment date ─────────────────────────────────
     inv_dt = _isodate(data.investment_date)
     # Request a 5-day window around the date to handle weekends/holidays
-    import datetime
-    d_start = inv_dt - datetime.timedelta(days=4)
-    d_end   = inv_dt + datetime.timedelta(days=1)
+    d_start = inv_dt - timedelta(days=4)
+    d_end   = inv_dt + timedelta(days=1)
 
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{data.symbol}"
     headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
     params  = {
-        "period1":  int(datetime.datetime(d_start.year, d_start.month, d_start.day).timestamp()),
-        "period2":  int(datetime.datetime(d_end.year,   d_end.month,   d_end.day).timestamp()),
+        "period1":  int(datetime(d_start.year, d_start.month, d_start.day).timestamp()),
+        "period2":  int(datetime(d_end.year,   d_end.month,   d_end.day).timestamp()),
         "interval": "1d",
     }
     try:
-        resp = _req.get(url, headers=headers, params=params, timeout=12)
+        resp = requests.get(url, headers=headers, params=params, timeout=12)
         resp.raise_for_status()
         result = resp.json().get("chart", {}).get("result", [])
         if not result:
@@ -489,8 +487,7 @@ def add_investment(data: ETFInvestmentIn):
         # Find the closest trading day on or before investment_date
         best_price = None
         best_ts    = None
-        import datetime as _dt
-        target_ts  = int(_dt.datetime(inv_dt.year, inv_dt.month, inv_dt.day, 23, 59).timestamp())
+        target_ts  = int(datetime(inv_dt.year, inv_dt.month, inv_dt.day, 23, 59).timestamp())
         for ts, cl in zip(timestamps, closes):
             if cl is not None and ts <= target_ts:
                 if best_ts is None or ts > best_ts:
@@ -611,9 +608,6 @@ def get_etf_data(symbol: str, range: str = "1mo"):
     range: 1wk | 1mo | 1y
     Returns list of { date, close, open, high, low } dicts.
     """
-    import requests as _req
-    from datetime import datetime as _dt
-
     # Map our range names to Yahoo Finance params
     range_map = {
         "1wk": ("1wk",  "1h"),
@@ -633,7 +627,7 @@ def get_etf_data(symbol: str, range: str = "1mo"):
         "includePrePost": "false",
     }
     try:
-        resp = _req.get(url, headers=headers, params=params, timeout=12)
+        resp = requests.get(url, headers=headers, params=params, timeout=12)
         resp.raise_for_status()
         data = resp.json()
 
@@ -656,7 +650,7 @@ def get_etf_data(symbol: str, range: str = "1mo"):
             if c is None:
                 continue
             rows.append({
-                "date":     _dt.utcfromtimestamp(ts).strftime("%Y-%m-%d %H:%M"),
+                "date":     datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d %H:%M"),
                 "close":    round(float(c), 4),
                 "open":     round(float(opens[i]),  4) if i < len(opens)  and opens[i]  else None,
                 "high":     round(float(highs[i]),  4) if i < len(highs)  and highs[i]  else None,

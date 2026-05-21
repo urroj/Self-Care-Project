@@ -543,8 +543,8 @@ export default function App() {
     <ErrorBoundary>
       <div style={{ fontFamily: FONT }}>
         <DecoLayer stars={STARS_BACK} sparkles={SPARKLES_BACK} clouds={CLOUDS_BACK} zIndex={0} />
-        <div style={{ position: 'fixed', left: '32%', top: '37%'}}><WitchSprite /></div>
         <div style={{ background: 'transparent', minHeight: '100vh', position: 'relative', zIndex: 1 }}>
+        <div style={{ position: 'absolute', left: cyclePos.x, top: cyclePos.y,}}><WitchSprite /></div>
           <Dock
             cycleOpen={cycleOpen} journalOpen={journalOpen} etfOpen={etfOpen}
             onHome={closeAll} onCycle={toggleCycle} onJournal={toggleJournal} onETF={toggleETF}
