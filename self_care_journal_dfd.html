@@ -442,7 +442,12 @@ body::before {
           <tr>
             <td class="flow-from">P1.2 check</td><td class="flow-arrow-cell">→</td>
             <td class="flow-to">duplicate guard</td>
-            <td class="flow-data">GET /api/logs → filter by log_date + cycle_id → if match exists: show confirmation, overwrite with ON CONFLICT DO NOTHING after confirm</td>
+            <td class="flow-data">GET /api/logs → filter by log_date.slice(0,10) === form.log_date AND cycle_id → if match: show confirmation, overwrite after confirm</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P1.4 validate</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">cycle length guard</td>
+            <td class="flow-data">diff = end_date − start_date (days); reject if diff ≤ 25 ("CYCLE TOO SHORT — MIN 26 DAYS") or diff ≥ 40 ("CYCLE TOO LONG — MAX 39 DAYS"); hint label shown below date picker before submission</td>
           </tr>
           <tr style="background:#EEF4FA;">
             <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#2A5A8A;padding:5px 8px;">STORAGE</td>
@@ -614,8 +619,13 @@ body::before {
           </tr>
           <tr>
             <td class="flow-from">User</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">P4.0 Manage Tickers</td>
+            <td class="flow-data">symbol (any Yahoo Finance ticker), display name (optional), subname (optional) → stored in browser localStorage; persists across sessions; assigned colour from 4-slot PALETTE cycling by index; custom tickers show ✕ remove; defaults (ISWD.SW, IGDA.L) cannot be removed</td>
+          </tr>
+          <tr>
+            <td class="flow-from">User</td><td class="flow-arrow-cell">→</td>
             <td class="flow-to">P4.2 Add Investment</td>
-            <td class="flow-data">symbol (ISWD.SW or IGDA.L), amount (ETF currency), investment_date, notes (optional)</td>
+            <td class="flow-data">symbol (any tracked ticker), amount (ETF currency), investment_date, notes (optional)</td>
           </tr>
           <tr style="background:#F0E8FA;">
             <td colspan="4" style="font-family:'Press Start 2P',monospace;font-size:6px;color:#5A1A8A;padding:5px 8px;">TRANSFORMATIONS</td>
@@ -624,6 +634,11 @@ body::before {
             <td class="flow-from">P4.1</td><td class="flow-arrow-cell">→</td>
             <td class="flow-to">chart normalise</td>
             <td class="flow-data">filter null closes, format timestamps to "YYYY-MM-DD HH:MM", round to 4dp, compute change = current − prev_close, change% = change/prev_close × 100</td>
+          </tr>
+          <tr>
+            <td class="flow-from">P4.1 on error</td><td class="flow-arrow-cell">→</td>
+            <td class="flow-to">offline fallback</td>
+            <td class="flow-data">if Yahoo Finance unreachable AND React ref holds last successful response: display stale data with ⚠ yellow banner "OFFLINE — SHOWING LAST RETRIEVED DATA"; if no cached data exists: show ✗ error in chart area at full height</td>
           </tr>
           <tr>
             <td class="flow-from">P4.2 price fetch</td><td class="flow-arrow-cell">→</td>
@@ -715,6 +730,20 @@ body::before {
           <td class="flow-data">P2 at every prediction</td>
           <td class="flow-data">P2 after --setup (prior), after cycle complete (Bayesian + LSTM)</td>
           <td class="flow-data">File system (not PostgreSQL). LSTM fine-tune runs in background thread to avoid blocking API response</td>
+        </tr>
+        <tr>
+          <td class="flow-to">D7 · etf_forecasts</td>
+          <td class="flow-data">symbol, horizon (1y|5y|10y), forecast_from DATE, forecast_dates[], forecast_values[], conf_lower[], conf_upper[], metrics JSONB, feature_importance JSONB, history_dates[], history_values[], model_name, model_rationale</td>
+          <td class="flow-data">P4 forecast panel on open (GET /api/etf/{symbol}/forecast)</td>
+          <td class="flow-data">P4 on ▶ RUN / ↺ UPDATE (POST /api/etf/{symbol}/forecast) — ETS for 1Y/5Y, log-linear OLS for 10Y</td>
+          <td class="flow-data">One row per (symbol, horizon); upserted on each run. Applied via etf_forecasts_migration.sql</td>
+        </tr>
+        <tr>
+          <td class="flow-to">localStorage · etf_tickers</td>
+          <td class="flow-data">JSON array of { symbol, name, subname, color, altColor } objects</td>
+          <td class="flow-data">ETFWindow on mount (initialises etfs state)</td>
+          <td class="flow-data">P4.0 add / remove ticker (browser only — no API call)</td>
+          <td class="flow-data">Browser localStorage — survives page reload, cleared on browser data wipe. Falls back to DEFAULT_ETFS if missing or invalid</td>
         </tr>
       </table>
     </div>

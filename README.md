@@ -8,9 +8,6 @@ The ML model improves automatically every month as you log new cycles, progressi
 
 It does not stop at cycle tracking. The desktop now has four windows: Cycle Tracker, Journal (with daily habits), ETF Tracker, and a Home screen with live widgets. Future iterations can keep adding windows — the desktop is yours.
 
-Future changes planned:
-1. Add a prediction model for the ETFs
-
 ---
 
 ## Table of Contents
@@ -65,12 +62,12 @@ cycle_tracker_app/
 ├── README.md                   This file
 ├── requirements.txt            Python dependencies
 ├── schema.sql                  PostgreSQL table and view definitions
-├── journal_migration.sql       Adds journal_entries table
 ├── habits_migration.sql        Adds daily_habits table
 ├── setup.sh                    One-shot automated setup script
 │
 ├── api/
 │   └── main.py                 FastAPI — all API routes including journal, habits, ETF proxy
+│   └── forecasting.py          ETF forecasting pipeline
 │
 ├── db/
 │   └── connector.py            All PostgreSQL reads and writes
@@ -142,7 +139,7 @@ CLI orchestrator for the ML pipeline:
 All Python dependencies. Key packages: `fastapi` and `uvicorn` (API server),
 `psycopg2-binary` (PostgreSQL), `scikit-learn`, `scipy`, `xgboost` (ML pipeline),
 `pywebview` (native window), `requests` (ETF data proxy).
-`torch` is commented out — only needed at Phase 3 (8+ cycles).
+`torch` is included — required at Phase 3 (8+ cycles) for LSTM fine-tuning and MC Dropout inference.
 
 **`schema.sql`**
 PostgreSQL DDL. Creates `cycles`, `daily_logs`, `model_runs`,'daily_habits','journal_entries' tables and the
@@ -183,6 +180,8 @@ In production, also serves the compiled React app from `frontend/dist/`.
 | POST   | `/api/etf/investments`                 | Fetch closing price from Yahoo Finance and store     |
 | DELETE | `/api/etf/investments/{investment_id}` | Delete a stored investment                           |
 | GET    | `/api/etf/{symbol}`                    | Proxy Yahoo Finance chart data for an ETF ticker     |
+| POST   | `/api/etf/{symbol}/forecast`           | Run ETS (1Y/5Y) or log-linear OLS (10Y) forecast    |
+| GET    | `/api/etf/{symbol}/forecast`           | Retrieve latest saved forecast for a ticker          |
 
 The ETF route accepts a `?range=1wk|1mo|1y` query parameter and maps it to
 Yahoo Finance interval values. It handles CORS, user-agent spoofing, and
@@ -324,7 +323,8 @@ an `Error` with the server's `detail` message on non-2xx responses. Methods:
 `getStatus`, `getCycles`, `getActiveCycle`, `startCycle`, `completeCycle`,
 `updateCycleDates`, `getLogs`, `saveLog`, `getPredictions`, `runPredict`,
 `getInsights`, `getJournalEntry`, `saveJournalEntry`, `getHabits`, `saveHabits`,
-`getETF`, `getETFInvestments`, `addETFInvestment`, `deleteETFInvestment`.
+`getETF`, `getETFInvestments`, `addETFInvestment`, `deleteETFInvestment`,
+`getETFForecast`, `runETFForecast`.
 
 **`src/theme.js`**
 Design token file. Exports the full colour palette (`C`), font constant,
@@ -347,15 +347,19 @@ shows an overwrite confirmation before updating.
 
 **`src/components/CyclesTab.jsx`**
 Cycle lifecycle management. Active cycle panel shows start date, days elapsed,
-and an end-date picker to mark the cycle complete (validates 15–60 day range).
-Completion calls `POST /api/cycles/complete` which triggers the Bayesian update
-and returns the new prediction shown in the success notification. Also shows the
-phase progress bar, four stat cards, and the full cycles table.
+and an end-date picker to mark the cycle complete (validates 26–39 day range —
+rejects cycles ≤ 25 days or ≥ 40 days with an inline error; a hint below the
+date picker shows the valid range before submission). Completion calls
+`POST /api/cycles/complete` which triggers the Bayesian update and returns the
+new prediction shown in the success notification. Also shows the phase progress
+bar, four stat cards, and the full cycles table.
 
 **`src/components/LogsTab.jsx`**
 Scrollable table of all daily logs. Client-side filter searches date, cycle
 number, mucus type, and moods. Symptom columns use ✓/— indicators. Flow
-intensity colour-coded red above 3. Default limit 300 rows.
+intensity colour-coded red above 3. Default limit 300 rows fetched; displayed
+25 rows per page with ◄/► navigation and numbered page buttons. The page
+resets to 1 whenever the filter text changes.
 
 **`src/components/ResultsTab.jsx`**
 Stored predictions from `GET /api/predictions` displayed as cards, newest first.
@@ -392,25 +396,51 @@ Habits save independently from the journal entry via `POST /api/habits` (upsert
 by date). Each tab has its own save button and last-saved timestamp in the footer.
 
 **`src/components/ETFWindow.jsx`**
-Islamic ETF tracker showing live price charts for two funds:
+Islamic ETF tracker with live price charts, portfolio tracking, and price forecasting.
+
+**Two default tickers:**
 
 | Ticker   | Fund                                               | Type     |
 |----------|----------------------------------------------------|----------|
 | ISWD.SW  | iShares MSCI World Islamic UCITS ETF               | USD Dist |
 | IGDA.L   | Invesco Dow Jones Islamic Global Developed Markets | USD Acc  |
 
-Three time ranges: 1W (1-hour bars), 1M (daily bars), 1Y (daily bars). Each
-chart shows a reference line at the previous close with a footer showing range
-high/low, exchange name, and data point count. Auto-refreshes every hour.
-Data is fetched via the FastAPI proxy which calls the Yahoo Finance v8 chart API
-— the browser never contacts Yahoo Finance directly (avoids CORS). Data is
-delayed 15–20 minutes for LSE and SIX listings.
+**Custom tickers:** The `+ TICKER` button in the title bar opens a form to add
+any Yahoo Finance symbol (name and subname are optional). Custom tickers are
+stored in `localStorage` so they persist across sessions. Each new ticker is
+assigned a colour from a 4-slot palette cycling by index. Custom tickers show
+a `✕` button in their panel header; the two defaults cannot be removed.
 
-Each ETF has an **Investment panel** below the chart. Add an investment by
-entering an amount and date — the backend fetches the closing price on that date
-from Yahoo Finance, computes units, and persists the row. The panel shows a
-cumulative **Invested vs Current Value** chart using historical price data as the
-x-axis, so a single investment still produces a full time-series line.
+**Layout:** Title bar contains title, PORTFOLIO toggle, FORECAST toggle, and
+`+ TICKER` button. A second bar directly below the title (chart mode only) holds
+the range buttons (1W / 1M / 1Y) and the manual refresh icon `↻`.
+
+**Chart mode:** Three time ranges — 1W (1-hour bars), 1M (daily bars), 1Y (daily
+bars). Each panel shows current price, change vs prev close, range high/low,
+exchange name, and data point count. Auto-refreshes every hour.
+Data is fetched via the FastAPI proxy (Yahoo Finance v8 chart API) — the browser
+never contacts Yahoo Finance directly (avoids CORS). Data is delayed 15–20
+minutes for LSE and SIX listings.
+
+**Offline fallback:** Each `ETFPanel` caches the last successful response in a
+React ref. If a subsequent fetch fails (no internet / Yahoo rate-limit), the
+stale data is displayed with a yellow `⚠ OFFLINE — SHOWING LAST RETRIEVED DATA`
+banner. If no previous data exists for a ticker, the red hard-failure message is
+shown instead.
+
+**Investment panel:** Toggled with the PORTFOLIO button (chart mode only). Add
+an investment by entering an amount and date — the backend fetches the closing
+price on that date from Yahoo Finance, computes units, and persists the row. The
+panel shows total invested, current value, gain/loss, return %, a cumulative
+**Invested vs Current Value** line chart, and a per-entry table with delete.
+
+**Forecast mode:** Toggled with the FORECAST button; a `◄ BACK` button returns
+to chart mode. Horizon selector (1Y / 5Y / 10Y) applies to all tickers
+simultaneously. Each ticker has a `▶ RUN` / `↺ UPDATE` button to trigger the
+model. Results show a combined history + forecast chart with a 95% CI shaded
+band, plus a MODEL tab with rationale, metrics, and feature drivers.
+Model selection: Holt-Winters ETS for 1Y and 5Y horizons; log-linear OLS for 10Y.
+Forecasts are stored in the `etf_forecasts` table and retrieved on subsequent opens.
 
 **`src/components/HomeWidgets.jsx`**
 Home screen shown when all windows are closed or when the Home dock button is
@@ -559,7 +589,7 @@ python app.py --api-only
 
 ## Database schema
 
-Six tables and one view. `schema.sql` creates the first three; the migration
+Seven tables and one view. `schema.sql` creates the first three; migration
 files add the rest.
 
 **`cycles`** — one row per menstrual cycle. `cycle_length` and `period_duration`
@@ -588,6 +618,11 @@ against live prices.
 
 **`model_runs`** — audit trail. Every prediction stored with full `JSONB`
 payload, model phase string, and personal cycle count at the time of the run.
+
+**`etf_forecasts`** — one row per (symbol, horizon) pair, updated on each
+model run. Stores forecast dates, values, and 95% confidence bounds as arrays,
+plus model metadata (name, rationale, metrics, feature importance) as JSONB.
+Applied via `etf_forecasts_migration.sql`.
 
 **`cycle_summaries`** (view) — joins `cycles` and `daily_logs` to produce one
 aggregate row per completed cycle: average flow, sleep, stress; total days with

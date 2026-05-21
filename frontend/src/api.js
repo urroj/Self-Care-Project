@@ -58,4 +58,8 @@ export const api = {
   getETFInvestments: (symbol) => req(`/etf/${symbol}/investments`),
   addETFInvestment:  (data)   => req('/etf/investments', { method: 'POST', body: JSON.stringify(data) }),
   deleteETFInvestment: (id)   => req(`/etf/investments/${id}`, { method: 'DELETE' }),
+
+  // ── ETF forecasts ─────────────────────────────────────────────────────────
+  getETFForecast: (symbol, horizon) => req(`/etf/${symbol}/forecast?horizon=${horizon}`),
+  runETFForecast: (symbol, horizon) => req(`/etf/${symbol}/forecast?horizon=${horizon}`, { method: 'POST' }),
 }

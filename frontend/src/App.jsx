@@ -74,6 +74,29 @@ const CLOUDS_FRONT = [
   { bottom: '8%',  right: '6%',  w:  80, h: 40, op: 0.60, flip: true },
 ]
 
+// ── Witch sprite ──────────────────────────────────────────────────────────────
+const WITCH_FRAMES = ['south', 'south-west', 'west', 'north-west', 'north', 'north-east', 'east', 'south-east']
+
+function WitchSprite() {
+  const [frame, setFrame] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setFrame(f => (f + 1) % WITCH_FRAMES.length), 180)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <div style={{
+      pointerEvents: 'none', zIndex: 1,
+    }}>
+      <img
+        src={`/create_a_cute_witch_with/rotations/${WITCH_FRAMES[frame]}.png`}
+        width={88} height={88}
+        style={{ imageRendering: 'pixelated', display: 'block' }}
+        alt=""
+      />
+    </div>
+  )
+}
+
 // ── Decoration components ─────────────────────────────────────────────────────
 function StarIcon({ size, opacity, x, y }) {
   return (
@@ -213,26 +236,35 @@ function PixelETFIcon({ size = 36, color = '#7A1A38' }) {
 // ── Dock ──────────────────────────────────────────────────────────────────────
 // dockRefs: { cycle: ref to cycle dock button, journal: ref to journal dock button }
 function DockBtn({ children, label, active, onClick, btnRef }) {
+  const [hov, setHov] = useState(false)
+  const [act, setAct] = useState(false)
   return (
     <button
       ref={btnRef}
       onClick={onClick}
       title={label}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => { setHov(false); setAct(false) }}
+      onMouseDown={() => setAct(true)}
+      onMouseUp={() => setAct(false)}
       style={{
-        width: 60, height: 60,
+        width: 64, height: 64,
         background: active
-          ? 'rgba(255, 240, 248, 0.80)'
-          : 'rgba(255, 240, 248, 0.30)',
-        border: `2px solid ${active ? C.frame : 'rgba(122,26,56,0.30)'}`,
+          ? 'rgba(255, 240, 248, 0.88)'
+          : hov ? 'rgba(255, 240, 248, 0.55)' : 'rgba(255, 240, 248, 0.28)',
+        border: `2px solid ${active ? C.frame : hov ? 'rgba(122,26,56,0.50)' : 'rgba(122,26,56,0.22)'}`,
+        borderRadius: '12px',
         boxShadow: active
-          ? `inset -2px -2px 0 ${C.sh}, inset 2px 2px 0 ${C.hi}, 0 6px 18px rgba(180,60,120,0.40)`
-          : `inset -1px -1px 0 rgba(90,0,32,0.25), inset 1px 1px 0 rgba(255,208,224,0.5)`,
+          ? `0 4px 22px rgba(122,26,56,0.32), 0 2px 8px rgba(122,26,56,0.18)`
+          : hov
+            ? `0 4px 16px rgba(122,26,56,0.18), 0 1px 4px rgba(122,26,56,0.10)`
+            : `0 2px 8px rgba(122,26,56,0.08)`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        transition: 'background 0.14s, border-color 0.14s, transform 0.12s, box-shadow 0.14s',
+        transform: act ? 'scale(0.90)' : active ? 'scale(1.08)' : hov ? 'scale(1.12)' : 'scale(1)',
         cursor: 'pointer',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        transition: 'background 0.15s, border-color 0.15s, transform 0.1s, box-shadow 0.15s',
-        transform: active ? 'scale(1.08)' : 'scale(1)',
       }}
     >
       {children}
@@ -243,11 +275,11 @@ function DockBtn({ children, label, active, onClick, btnRef }) {
 function Dock({ cycleOpen, journalOpen, etfOpen, onHome, onCycle, onJournal, onETF, cycleRef, journalRef, etfRef }) {
   return (
     <div style={{
-      position: 'fixed', left: 12, top: '50%', transform: 'translateY(-50%)',
-      display: 'flex', flexDirection: 'column', gap: 10,
+      position: 'fixed', left: 14, top: '50%', transform: 'translateY(-50%)',
+      display: 'flex', flexDirection: 'column', gap: 12,
       zIndex: 2000,
     }}>
-      <DockBtn label="HOME" active={false} onClick={onHome}>
+      <DockBtn label="HOME" active={!((journalOpen || etfOpen || cycleOpen) === false)} onClick={onHome}>
         <PixelHomeIcon size={34} color={C.frame} />
       </DockBtn>
       <DockBtn label="CYCLE TRACKER" active={cycleOpen} onClick={onCycle} btnRef={cycleRef}>
@@ -272,23 +304,19 @@ function AnimatedWindow({ open, dockRef, children, style, onMouseDown }) {
   const prevOpen = useRef(open)
 
   useEffect(() => {
-    // Compute transform origin from dock button position
     if (dockRef?.current) {
       const r = dockRef.current.getBoundingClientRect()
-      const cx = r.left + r.width / 2
-      const cy = r.top  + r.height / 2
-      setOrigin(`${cx}px ${cy}px`)
+      setOrigin(`${r.left + r.width / 2}px ${r.top + r.height / 2}px`)
     }
-
     if (open && !prevOpen.current) {
       setPhase('entering')
-      const t = setTimeout(() => setPhase('open'), 20)
+      const t = setTimeout(() => setPhase('open'), 16)
       prevOpen.current = true
       return () => clearTimeout(t)
     }
     if (!open && prevOpen.current) {
       setPhase('closing')
-      const t = setTimeout(() => setPhase('closed'), 280)
+      const t = setTimeout(() => setPhase('closed'), 300)
       prevOpen.current = false
       return () => clearTimeout(t)
     }
@@ -296,9 +324,11 @@ function AnimatedWindow({ open, dockRef, children, style, onMouseDown }) {
 
   if (phase === 'closed') return null
 
-  const entering = phase === 'entering'
-  const closing  = phase === 'closing'
-  const animating = entering || closing
+  const isSmall = phase === 'entering' || phase === 'closing'
+  const transition =
+    phase === 'entering' ? 'none' :
+    phase === 'open'     ? 'transform 0.44s cubic-bezier(0.34,1.56,0.64,1), opacity 0.34s ease' :
+    phase === 'closing'  ? 'transform 0.26s cubic-bezier(0.4,0,1,1), opacity 0.20s ease' : 'none'
 
   return (
     <div
@@ -306,16 +336,11 @@ function AnimatedWindow({ open, dockRef, children, style, onMouseDown }) {
       style={{
         ...style,
         transformOrigin: origin,
-        transform: animating
-          ? 'scale(0.08) translateX(-60px)'
-          : 'scale(1) translateX(0px)',
-        opacity:   animating ? 0 : 1,
-        transition: animating
-          ? 'transform 0.28s cubic-bezier(0.4,0,0.2,1), opacity 0.22s ease'
-          : entering
-            ? 'transform 0.32s cubic-bezier(0.34,1.56,0.64,1), opacity 0.24s ease'
-            : 'transform 0.30s cubic-bezier(0.34,1.56,0.64,1), opacity 0.24s ease',
-        pointerEvents: animating ? 'none' : 'auto',
+        borderRadius: '14px',
+        transform: isSmall ? 'scale(0.06) translateX(-60px)' : 'scale(1) translateX(0)',
+        opacity:   isSmall ? 0 : 1,
+        transition,
+        pointerEvents: isSmall ? 'none' : 'auto',
       }}
     >
       {children}
@@ -327,9 +352,11 @@ function AnimatedWindow({ open, dockRef, children, style, onMouseDown }) {
 function TitleBar({ title, icon, onMouseDown }) {
   return (
     <div onMouseDown={onMouseDown} style={{
-      background: C.bar, padding: '3px 10px',
+      background: C.bar, padding: '6px 12px',
       display: 'flex', alignItems: 'center',
       userSelect: 'none', cursor: 'grab',
+      borderTopLeftRadius: '10px',
+      borderTopRightRadius: '10px',
     }}>
       <i className={`ti ${icon}`} style={{ fontSize: 12, color: C.barT, marginRight: 7 }} />
       <span style={{ color: C.barT, fontSize: SIZE.md, letterSpacing: '.08em', fontFamily: FONT }}>
@@ -339,28 +366,40 @@ function TitleBar({ title, icon, onMouseDown }) {
   )
 }
 
+function TabBtn({ label, active, onClick }) {
+  const [hov, setHov] = useState(false)
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => !active && setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        fontFamily: FONT, fontSize: SIZE.sm, letterSpacing: '.06em',
+        color: active ? C.txt : hov ? C.txt : C.mut,
+        background: active ? C.win : hov ? `${C.desk}dd` : C.desk,
+        border: `1px solid ${C.frame}`,
+        borderTopLeftRadius: '5px', borderTopRightRadius: '5px',
+        borderBottom: active ? `2px solid ${C.win}` : `1px solid ${C.frame}`,
+        padding: '5px 12px 6px',
+        boxShadow: active ? `inset 1px 1px 0 ${C.hi}` : `inset -1px -1px 0 rgba(90,0,32,0.22)`,
+        marginBottom: active ? -2 : 0,
+        position: 'relative', zIndex: active ? 2 : 1,
+        transition: 'color 0.12s, background 0.12s',
+        cursor: 'pointer',
+      }}
+    >{label}</button>
+  )
+}
+
 function TabBar({ tab, setTab }) {
   return (
     <div style={{
       background: C.face, borderBottom: `2px solid ${C.frame}`,
-      padding: '5px 6px 0', display: 'flex', gap: 2, alignItems: 'flex-end',
+      padding: '5px 8px 0', display: 'flex', gap: 3, alignItems: 'flex-end',
     }}>
-      {TABS.map(t => {
-        const active = tab === t.id
-        return (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{
-            fontFamily: FONT, fontSize: SIZE.sm, letterSpacing: '.06em',
-            color: active ? C.txt : C.mut,
-            background: active ? C.win : C.desk,
-            border: `1px solid ${C.frame}`,
-            borderBottom: active ? `2px solid ${C.win}` : `1px solid ${C.frame}`,
-            padding: '4px 10px 5px',
-            boxShadow: active ? `inset 1px 1px 0 ${C.hi}` : `inset -1px -1px 0 ${C.sh}66`,
-            marginBottom: active ? -2 : 0,
-            position: 'relative', zIndex: active ? 2 : 1,
-          }}>{t.label}</button>
-        )
-      })}
+      {TABS.map(t => (
+        <TabBtn key={t.id} label={t.label} active={tab === t.id} onClick={() => setTab(t.id)} />
+      ))}
     </div>
   )
 }
@@ -374,6 +413,7 @@ function StatusBar({ status }) {
     <div style={{
       background: C.face, borderTop: `1px solid ${C.grd}`,
       padding: '2px 8px', display: 'flex', gap: 16, alignItems: 'center',
+      borderBottomLeftRadius: "10px", borderBottomRightRadius: "10px",
     }}>
       <span style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut }}>PHASE: {phase.toUpperCase()}</span>
       <span style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut }}>CYCLES: {n} / 8</span>
@@ -397,10 +437,10 @@ export default function App() {
   const [refreshKey, setRefreshKey]   = useState(0)
   const [cycleOpen,   setCycleOpen]   = useState(false)
   const [journalOpen, setJournalOpen] = useState(false)
-  const [cyclePos,    setCyclePos]    = useState({ x: 82, y: 20 })
-  const [journalPos,  setJournalPos]  = useState({ x: 130, y: 70 })
+  const [cyclePos,    setCyclePos]    = useState({ x: 96, y: 20 })
+  const [journalPos,  setJournalPos]  = useState({ x: 148, y: 70 })
   const [etfOpen,  setEtfOpen]  = useState(false)
-  const [etfPos,   setEtfPos]   = useState({ x: 180, y: 40 })
+  const [etfPos,   setEtfPos]   = useState({ x: 200, y: 40 })
  
   // Z-index management
   const zRef     = useRef(10)
@@ -441,7 +481,7 @@ export default function App() {
       if (!activeDrag.current) return
       const { offsetX, offsetY, setPos } = activeDrag.current
       setPos({
-        x: Math.max(82, e.clientX - offsetX),
+        x: Math.max(96, e.clientX - offsetX),
         y: Math.max(0,  e.clientY - offsetY),
       })
     }
@@ -494,19 +534,17 @@ export default function App() {
   // Window styles (shared base)
   const winBase = {
     border: `2px solid ${C.frame}`,
-    boxShadow: `3px 3px 0 ${C.sh}, 0 12px 40px rgba(180,60,120,0.30)`,
-    background: 'rgba(255, 240, 248, 0.90)',
-    backdropFilter: 'blur(10px)',
-    WebkitBackdropFilter: 'blur(10px)',
+    boxShadow: `0 8px 40px rgba(122,26,56,0.16), 0 2px 10px rgba(122,26,56,0.09)`,
+    background: 'rgba(255, 240, 248, 0.93)',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)',
   }
-
   return (
     <ErrorBoundary>
       <div style={{ fontFamily: FONT }}>
         <DecoLayer stars={STARS_BACK} sparkles={SPARKLES_BACK} clouds={CLOUDS_BACK} zIndex={0} />
-
+        <div style={{ position: 'fixed', left: '32%', top: '37%'}}><WitchSprite /></div>
         <div style={{ background: 'transparent', minHeight: '100vh', position: 'relative', zIndex: 1 }}>
-
           <Dock
             cycleOpen={cycleOpen} journalOpen={journalOpen} etfOpen={etfOpen}
             onHome={closeAll} onCycle={toggleCycle} onJournal={toggleJournal} onETF={toggleETF}
@@ -522,8 +560,8 @@ export default function App() {
               ...winBase,
               position: 'absolute',
               left: cyclePos.x, top: cyclePos.y,
-              width: 'calc(100vw - 100px)', maxWidth: 780,
-              zIndex: cycleZ,
+              width: 'calc(100vw - 108px)', maxWidth: 940,
+              zIndex: cycleZ
             }}
           >
             <TitleBar
@@ -564,7 +602,7 @@ export default function App() {
               ...winBase,
               position: 'absolute',
               left: journalPos.x, top: journalPos.y,
-              width: 420,
+              width: 520,
               zIndex: journalZ,
             }}
           >
@@ -586,7 +624,7 @@ export default function App() {
               ...winBase,
               position: 'absolute',
               left: etfPos.x, top: etfPos.y,
-              width: 480,
+              width: 580,
               zIndex: etfZ,
             }}
           >

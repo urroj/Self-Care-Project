@@ -33,6 +33,7 @@ function RunCard({ run, index, total }) {
       background: index % 2 === 0 ? C.r1 : C.r2,
       padding: '8px 10px', marginBottom: 6,
       boxShadow: `inset -1px -1px 0 ${C.hi}`,
+      borderRadius: "5px"
     }}>
       <div style={{
         display: 'flex', justifyContent: 'space-between',
@@ -122,7 +123,7 @@ function ModelExplanation({ personalCycles }) {
           boxShadow: open ? SUNKEN : RAISED,
           padding: '4px 12px', cursor: 'pointer', width: '100%',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          letterSpacing: '.04em',
+          letterSpacing: '.04em',borderRadius: "5px"
         }}
       >
         <span>ABOUT THIS MODEL — WHAT AM I LOOKING AT?</span>
@@ -138,7 +139,7 @@ function ModelExplanation({ personalCycles }) {
           {/* Current phase */}
           <div style={{
             background: phaseInfo.color, padding: '8px 10px', marginBottom: 12,
-            border: `1px solid ${C.frame}`,
+            border: `1px solid ${C.frame}`,borderRadius: "5px"
           }}>
             <div style={{ fontFamily: FONT, fontSize: SIZE.xs, color: '#3A0018', letterSpacing: '.06em', marginBottom: 4 }}>
               YOUR CURRENT MODEL PHASE
@@ -227,7 +228,7 @@ export default function ResultsTab({ refreshKey, notify }) {
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         background: C.r1, border: `1px solid ${C.grd}`,
-        padding: '8px 10px', marginBottom: 10,
+        padding: '8px 10px', marginBottom: 10, borderRadius: "5px"
       }}>
         <span style={{ fontFamily: FONT, fontSize: SIZE.sm, color: C.mut }}>
           RUN NEW PREDICTION · today is cycle day
@@ -241,6 +242,7 @@ export default function ResultsTab({ refreshKey, notify }) {
             background: '#FEFAF4', border: `1px solid ${C.grd}`,
             boxShadow: `inset 1px 1px 0 ${C.sh}`,
             padding: '2px 5px', width: 50, outline: 'none',
+            borderRadius: "5px"
           }}
         />
         <PixelBtn onClick={handleRunPredict} disabled={running} color={C.sage}>

@@ -20,6 +20,8 @@ export default function LogsTab({ refreshKey }) {
   const [logs, setLogs]     = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
+  const [page, setPage]         = useState(1)
+  const PAGE_SIZE               = 25
 
   useEffect(() => {
     setLoading(true)
@@ -28,6 +30,8 @@ export default function LogsTab({ refreshKey }) {
       .catch(() => setLogs([]))
       .finally(() => setLoading(false))
   }, [refreshKey])
+
+  useEffect(() => { setPage(1) }, [filter])
 
   const filtered = filter
     ? logs.filter(l =>
@@ -38,12 +42,15 @@ export default function LogsTab({ refreshKey }) {
       )
     : logs
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
   return (
     <div style={{ padding: '10px 12px' }}>
       {/* Filter bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        marginBottom: 8,
+        marginBottom: 8
       }}>
         <input
           type="text"
@@ -55,6 +62,7 @@ export default function LogsTab({ refreshKey }) {
             background: C.inp, border: `1px solid ${C.grd}`,
             boxShadow: `inset 1px 1px 0 ${C.sh}`,
             padding: '2px 6px', width: 220, outline: 'none',
+            borderRadius: "5px"
           }}
         />
         {filter && (
@@ -63,18 +71,56 @@ export default function LogsTab({ refreshKey }) {
             background: C.face, border: 'none',
             boxShadow: `inset -1px -1px 0 ${C.sh}, inset 1px 1px 0 ${C.hi}`,
             padding: '2px 8px', cursor: 'pointer',
+            borderRadius: "5px"
           }}>
             CLEAR
           </button>
         )}
         <span style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut, marginLeft: 'auto' }}>
-          {filtered.length} / {logs.length} records
+          {filtered.length} records · pg {page}/{totalPages}
         </span>
       </div>
 
+      {/*Pagination */}
+      {totalPages > 1 && (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+          style={{ fontFamily: FONT, fontSize: SIZE.xs, color: page === 1 ? C.mut : C.txt,
+            background: C.face, border: `1px solid ${C.grd}`, padding: '2px 8px',
+            cursor: page === 1 ? 'default' : 'pointer', borderRadius: '5px' }}>
+          ◄
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1)
+          .filter(n => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
+          .reduce((acc, n, i, arr) => {
+            if (i > 0 && n - arr[i - 1] > 1) acc.push('…')
+            acc.push(n)
+            return acc
+          }, [])
+          .map((n, i) =>
+            n === '…'
+              ? <span key={`ellipsis-${i}`} style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut }}>…</span>
+              : <button key={n} onClick={() => setPage(n)}
+                  style={{ fontFamily: FONT, fontSize: SIZE.xs,
+                    color: n === page ? C.barT : C.txt,
+                    background: n === page ? C.frame : C.face,
+                    border: `1px solid ${C.grd}`, padding: '2px 8px',
+                    cursor: n === page ? 'default' : 'pointer', borderRadius: '5px' }}>
+                  {n}
+                </button>
+          )}
+        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+          style={{ fontFamily: FONT, fontSize: SIZE.xs, color: page === totalPages ? C.mut : C.txt,
+            background: C.face, border: `1px solid ${C.grd}`, padding: '2px 8px',
+            cursor: page === totalPages ? 'default' : 'pointer', borderRadius: '5px' }}>
+          ►
+        </button>
+      </div>
+    )}
+
       {/* Table */}
       <div style={{
-        boxShadow: SUNKEN, border: `1px solid ${C.grd}`,
+        boxShadow: SUNKEN, border: `1px solid ${C.grd}`,borderRadius: "5px",
         maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', overflowX: 'auto',
       }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
@@ -90,7 +136,7 @@ export default function LogsTab({ refreshKey }) {
               ? <LoadingRow cols={13} />
               : filtered.length === 0
                 ? <EmptyRow cols={13} msg="NO LOGS YET — START LOGGING IN THE LOG TODAY TAB" />
-                : filtered.map((l, i) => (
+                : paginated.map((l, i) => (
                     <tr key={l.id || i} style={{ background: i % 2 === 0 ? C.r1 : C.r2 }}>
                       <td style={{ ...TD, color: C.sage }}>#{l.cycle_number}</td>
                       <td style={TD}>{l.log_date}</td>

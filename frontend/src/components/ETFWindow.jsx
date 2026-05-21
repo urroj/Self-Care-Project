@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  ComposedChart, LineChart, Line, Area,
+  XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 import { api } from '../api.js'
@@ -10,7 +11,14 @@ import { C, FONT, RAISED, SUNKEN, SIZE } from '../theme.js'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
-const ETFS = [
+const PALETTE = [
+  { color: '#C4506A', altColor: '#E87090' },
+  { color: '#5A8E72', altColor: '#82ABA1' },
+  { color: '#5A72A8', altColor: '#8296C8' },
+  { color: '#A07840', altColor: '#C89858' },
+]
+
+const DEFAULT_ETFS = [
   { symbol: 'ISWD.SW', name: 'MSCI World Islamic',  subname: 'iShares — USD (Dist)', color: '#C4506A', altColor: '#E87090' },
   { symbol: 'IGDA.L',  name: 'Islamic Global Dev.', subname: 'Invesco — USD (Acc)',  color: '#5A8E72', altColor: '#82ABA1' },
 ]
@@ -19,6 +27,26 @@ const RANGES = [
   { key: '1mo', label: '1M' },
   { key: '1y',  label: '1Y' },
 ]
+
+function Btn({ children, onClick, disabled, style, title }) {
+  const [hov, setHov] = useState(false)
+  const [act, setAct] = useState(false)
+  return (
+    <button
+      onClick={onClick} disabled={disabled} title={title}
+      onMouseEnter={() => !disabled && setHov(true)}
+      onMouseLeave={() => { setHov(false); setAct(false) }}
+      onMouseDown={() => !disabled && setAct(true)}
+      onMouseUp={() => setAct(false)}
+      style={{
+        ...style,
+        transform: !disabled && act ? 'scale(0.95) translateY(1px)' : !disabled && hov ? 'scale(1.05)' : 'scale(1)',
+        filter: hov && !act && !disabled ? 'brightness(1.08)' : 'none',
+        transition: 'transform 0.10s ease, filter 0.10s ease, box-shadow 0.10s ease',
+      }}
+    >{children}</button>
+  )
+}
 
 // ── Custom tooltip ──────────────────────────────────────────────────────────
 function PixelTooltip({ active, payload, label, currency }) {
@@ -124,13 +152,13 @@ function InvestmentPanel({ etf, currentPrice, currency , priceData = [] }) {
         <div style={{ fontFamily: FONT, fontSize: SIZE.xs, color: etf.color, letterSpacing: '.04em' }}>
           MY INVESTMENTS · {etf.symbol}
         </div>
-        <button onClick={() => setShowForm(f => !f)} style={{
-          fontFamily: FONT, fontSize: 7, color: showForm ? C.err : C.ok,
+        <Btn onClick={() => setShowForm(f => !f)} style={{
+          fontFamily: FONT, fontSize: SIZE.xs, color: showForm ? C.err : C.ok,
           background: C.face, border: 'none', boxShadow: RAISED,
-          padding: '2px 10px', cursor: 'pointer',
+          padding: '3px 12px', borderRadius: '6px', cursor: 'pointer',
         }}>
           {showForm ? '✕ CANCEL' : '+ ADD'}
-        </button>
+        </Btn>
       </div>
 
       {/* Notification */}
@@ -211,14 +239,14 @@ function InvestmentPanel({ etf, currentPrice, currency , priceData = [] }) {
             <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut, alignSelf: 'center' }}>
               Price fetched automatically from Yahoo Finance
             </div>
-            <button onClick={handleAdd} disabled={adding} style={{
-              fontFamily: FONT, fontSize: 8, color: adding ? C.mut : C.ok,
+            <Btn onClick={handleAdd} disabled={adding} style={{
+              fontFamily: FONT, fontSize: SIZE.xs, color: adding ? C.mut : C.ok,
               background: C.face, border: 'none',
               boxShadow: adding ? SUNKEN : RAISED,
-              padding: '4px 16px', cursor: adding ? 'default' : 'pointer',
+              padding: '4px 18px', borderRadius: '6px', cursor: adding ? 'default' : 'pointer',
             }}>
               {adding ? 'FETCHING PRICE…' : '▶ SAVE'}
-            </button>
+            </Btn>
           </div>
         </div>
       )}
@@ -237,7 +265,7 @@ function InvestmentPanel({ etf, currentPrice, currency , priceData = [] }) {
           ].map(({ label, val, color }) => (
             <div key={label} style={{
               background: C.r1, border: `1px solid ${C.grd}`,
-              padding: '5px 6px', boxShadow: SUNKEN,
+              padding: '5px 6px', boxShadow: SUNKEN,borderRadius: "5px"
             }}>
               <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut }}>{label}</div>
               <div style={{ fontFamily: FONT, fontSize: 8, color, fontWeight: 'bold', marginTop: 2 }}>{val}</div>
@@ -247,7 +275,6 @@ function InvestmentPanel({ etf, currentPrice, currency , priceData = [] }) {
       )}
 
       {/* Invested vs Current value over time */}
-            {/* Invested vs Current value over time */}
       {investments.length > 0 && priceData.length > 0 && (() => {
         const sorted = [...investments].sort((a, b) =>
           new Date(a.investment_date) - new Date(b.investment_date)
@@ -291,7 +318,7 @@ function InvestmentPanel({ etf, currentPrice, currency , priceData = [] }) {
         }
 
         return (
-          <div style={{ margin: '0 10px 10px', padding: '8px 10px', background: C.r1, border: `1px solid ${C.grd}` }}>
+          <div style={{ margin: '0 10px 10px', padding: '8px 10px', background: C.r1, border: `1px solid ${C.grd}`, borderRadius: "5px" }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <div style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut, letterSpacing: '.04em' }}>
                 INVESTED VS CURRENT VALUE
@@ -405,17 +432,17 @@ function InvestmentPanel({ etf, currentPrice, currency , priceData = [] }) {
                       {gl != null ? `${up ? '+' : '-'}${currency} ${fmt(Math.abs(gl))}` : '—'}
                     </td>
                     <td style={{ padding: '4px 6px' }}>
-                      <button
+                      <Btn
                         onClick={() => handleDelete(inv.id)}
                         title="Remove"
                         style={{
-                          fontFamily: FONT, fontSize: 8, color: C.err,
+                          fontFamily: FONT, fontSize: 9, color: C.err,
                           background: 'transparent', border: 'none',
-                          cursor: 'pointer', padding: '0 2px', lineHeight: 1,
+                          padding: '2px 4px', lineHeight: 1, borderRadius: '6px', cursor: 'pointer',
                         }}
                       >
                         ✕
-                      </button>
+                      </Btn>
                     </td>
                   </tr>
                 )
@@ -429,16 +456,25 @@ function InvestmentPanel({ etf, currentPrice, currency , priceData = [] }) {
 }
 
 // ── ETF chart panel ──────────────────────────────────────────────────────────
-function ETFPanel({ etf, range, showInvestments }) {
+function ETFPanel({ etf, range, showInvestments, onRemove, isDefault = true }) {
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(null)
+  const lastData              = useRef(null)
 
   useEffect(() => {
     setLoading(true); setError(null)
     api.getETF(etf.symbol, range)
-      .then(d => { setData(d); setLoading(false) })
-      .catch(e => { setError(e.message); setLoading(false) })
+      .then(d => { setData(d); lastData.current = d; setLoading(false) })
+      .catch(e => {
+        if (lastData.current) {
+          setData(lastData.current)
+          setError('OFFLINE — SHOWING LAST RETRIEVED DATA')
+        } else {
+          setError(e.message)
+        }
+        setLoading(false)
+      })
   }, [etf.symbol, range])
 
   const prices    = data?.data?.map(d => d.close).filter(Boolean) ?? []
@@ -468,28 +504,42 @@ function ETFPanel({ etf, range, showInvestments }) {
   const yMax = rangeHigh ? rangeHigh * 1.002 : 'auto'
 
   return (
-    <div style={{ background: C.r1, border: `1px solid ${C.grd}`, marginBottom: 10, boxShadow: `inset -1px -1px 0 ${C.hi}` }}>
+    <div style={{ borderRadius: '8px', background: C.r1, border: `1px solid ${C.grd}`, marginBottom: 12, boxShadow: `0 4px 16px rgba(122,26,56,0.07)` }}>
       {/* Header */}
       <div style={{ padding: '8px 12px 6px', borderBottom: `1px solid ${C.grd}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ fontFamily: FONT, fontSize: SIZE.sm, color: etf.color, letterSpacing: '.04em', marginBottom: 2 }}>{etf.name}</div>
           <div style={{ fontFamily: FONT, fontSize: 7, color: C.mut }}>{etf.symbol} · {etf.subname}</div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontFamily: FONT, fontSize: SIZE.lg, color: C.txt, fontWeight: 'bold', lineHeight: 1.2 }}>
-            {current ? `${data?.currency ?? ''} ${current.toFixed(2)}` : '—'}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontFamily: FONT, fontSize: SIZE.lg, color: C.txt, fontWeight: 'bold', lineHeight: 1.2 }}>
+              {current ? `${data?.currency ?? ''} ${current.toFixed(2)}` : '—'}
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: SIZE.xs, color: isUp ? C.ok : C.err, marginTop: 2 }}>
+              {change >= 0 ? '+' : ''}{change.toFixed(2)} ({changePct.toFixed(2)}%)
+            </div>
           </div>
-          <div style={{ fontFamily: FONT, fontSize: SIZE.xs, color: isUp ? C.ok : C.err, marginTop: 2 }}>
-            {change >= 0 ? '+' : ''}{change.toFixed(2)} ({changePct.toFixed(2)}%)
-          </div>
+          {!isDefault && onRemove && (
+            <Btn onClick={() => onRemove(etf.symbol)} title="Remove ticker" style={{
+              fontFamily: FONT, fontSize: 9, color: C.err,
+              background: 'transparent', border: 'none',
+              padding: '2px 4px', lineHeight: 1, borderRadius: '4px', cursor: 'pointer',
+            }}>✕</Btn>
+          )}
         </div>
       </div>
 
       {/* Chart */}
       <div style={{ padding: '8px 4px 4px' }}>
         {loading && <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: SIZE.xs, color: C.mut }}>LOADING {etf.symbol}…</div>}
-        {error   && <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 4, fontFamily: FONT, fontSize: 7, color: C.err, padding: '0 12px', textAlign: 'center' }}><div>✗ LOAD FAILED</div><div style={{ color: C.mut, fontSize: 6 }}>{error}</div></div>}
-        {!loading && !error && data?.data?.length > 0 && (
+        {error && !lastData.current && <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 4, fontFamily: FONT, fontSize: 7, color: C.err, padding: '0 12px', textAlign: 'center' }}><div>✗ LOAD FAILED</div><div style={{ color: C.mut, fontSize: 6 }}>{error}</div></div>}
+        {error && lastData.current && (
+          <div style={{ margin: '0 4px 4px', padding: '4px 8px', background: '#FFF8C0', border: '1px solid #C8A000', fontFamily: FONT, fontSize: 6, color: '#7A6000' }}>
+            ⚠ {error}
+          </div>
+        )}
+        {!loading && data?.data?.length > 0 && (
           <ResponsiveContainer width="100%" height={120}>
             <LineChart data={data.data} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="2 2" stroke={C.grd} opacity={0.6} />
@@ -501,11 +551,11 @@ function ETFPanel({ etf, range, showInvestments }) {
             </LineChart>
           </ResponsiveContainer>
         )}
-        {!loading && !error && data?.data?.length === 0 && <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: SIZE.xs, color: C.mut }}>NO DATA FOR {range.toUpperCase()} RANGE</div>}
+        {!loading && !error && !lastData.current && data?.data?.length === 0 && <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: SIZE.xs, color: C.mut }}>NO DATA FOR {range.toUpperCase()} RANGE</div>}
       </div>
 
       {/* Stats footer */}
-      {!loading && !error && prices.length > 0 && (
+      {!loading && prices.length > 0 && (
         <div style={{ padding: '4px 12px 8px', display: 'flex', gap: 16, borderTop: `1px solid ${C.grd}` }}>
           {[['RANGE HIGH', rangeHigh.toFixed(2)], ['RANGE LOW', rangeLow.toFixed(2)], ['EXCHANGE', data?.exchange ?? '—']].map(([l, v]) => (
             <div key={l}>
@@ -528,11 +578,404 @@ function ETFPanel({ etf, range, showInvestments }) {
   )
 }
 
+// ── Forecast panel ───────────────────────────────────────────────────────────
+const FC_HORIZONS = [
+  { key: '1y',  label: '1Y',  desc: 'next 12 months' },
+  { key: '5y',  label: '5Y',  desc: 'next 5 years'   },
+  { key: '10y', label: '10Y', desc: 'next 10 years'  },
+]
+
+function ForecastPanel({ etf, horizon }) {
+  const [forecast, setForecast] = useState(undefined)   // undefined=loading, null=missing, obj=ok
+  const [running, setRunning]   = useState(false)
+  const [runErr, setRunErr]     = useState(null)
+  const [subtab, setSubtab]     = useState('chart')     // 'chart' | 'model'
+
+  const load = () => {
+    setForecast(undefined)
+    api.getETFForecast(etf.symbol, horizon)
+      .then(d => setForecast(d))
+      .catch(() => setForecast(null))
+  }
+
+  useEffect(() => { load() }, [etf.symbol, horizon])
+
+  const handleRun = async () => {
+    setRunning(true); setRunErr(null)
+    try {
+      const d = await api.runETFForecast(etf.symbol, horizon)
+      setForecast(d)
+    } catch (e) {
+      setRunErr(e.message || 'MODEL RUN FAILED')
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  // Build merged chart data: history tail + forecast with CI band
+  const chartData = useMemo(() => {
+    if (!forecast) return []
+    const hist = (forecast.history_dates || []).map((d, i) => ({
+      date:        d,
+      close:       forecast.history_values[i] ?? null,
+      forecast:    null,
+      band_lower:  null,
+      band_height: null,
+    }))
+    const fc = (forecast.forecast_dates || []).map((d, i) => ({
+      date:        d,
+      close:       null,
+      forecast:    forecast.forecast_values[i] ?? null,
+      band_lower:  forecast.conf_lower[i]  ?? null,
+      band_height: forecast.conf_upper[i] != null && forecast.conf_lower[i] != null
+                     ? Math.max(0, forecast.conf_upper[i] - forecast.conf_lower[i])
+                     : null,
+    }))
+    return [...hist, ...fc]
+  }, [forecast])
+
+  const formatXAxis = (val) => {
+    if (!val) return ''
+    try {
+      const d = new Date(val)
+      if (horizon === '1y') return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+      if (horizon === '5y') return d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })
+      return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+    } catch { return val }
+  }
+
+  const tickCount = horizon === '10y' ? 6 : 8
+  const ticks = chartData.length
+    ? chartData.filter((_, i, a) => i % Math.ceil(a.length / tickCount) === 0).map(d => d.date)
+    : []
+
+  const allVals = chartData.flatMap(d => [d.close, d.forecast, d.band_lower,
+    d.band_height != null && d.band_lower != null ? d.band_lower + d.band_height : null,
+  ].filter(v => v != null))
+  const yMin = allVals.length ? Math.min(...allVals) * 0.995 : 'auto'
+  const yMax = allVals.length ? Math.max(...allVals) * 1.005 : 'auto'
+
+  const currency = forecast?.currency ?? ''
+  const runAt    = forecast?.run_at ?? null
+
+  // ── Chart tab ───────────────────────────────────────────────────────────────
+  const chartView = (
+    <>
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 14, marginBottom: 6, paddingLeft: 2 }}>
+        <span style={{ fontFamily: FONT, fontSize: 6, color: etf.color }}>▬ PRICE</span>
+        <span style={{ fontFamily: FONT, fontSize: 6, color: etf.color, opacity: 0.7 }}>
+          ╌╌ FORECAST
+        </span>
+        <span style={{ fontFamily: FONT, fontSize: 6, color: etf.color, opacity: 0.4 }}>
+          ▓ 95% CONF.
+        </span>
+      </div>
+      <ResponsiveContainer width="100%" height={150}>
+        <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="2 2" stroke={C.grd} opacity={0.5} />
+          <XAxis
+            dataKey="date"
+            ticks={ticks}
+            tickFormatter={formatXAxis}
+            tick={{ fontFamily: FONT, fontSize: 6, fill: C.mut }}
+            axisLine={{ stroke: C.grd }}
+            tickLine={false}
+          />
+          <YAxis
+            domain={[yMin, yMax]}
+            allowDataOverflow={true}
+            tick={{ fontFamily: FONT, fontSize: 6, fill: C.mut }}
+            axisLine={false}
+            tickLine={false}
+            width={46}
+            tickFormatter={v => v.toFixed(1)}
+          />
+          <Tooltip
+            content={({ active, payload, label }) => {
+              if (!active || !payload?.length) return null
+              const vals = payload.filter(p => p.value != null && p.name !== 'band_lower')
+              if (!vals.length) return null
+              return (
+                <div style={{
+                  background: 'rgba(255,245,248,0.96)', border: `2px solid ${C.frame}`,
+                  padding: '6px 10px', fontFamily: FONT,
+                }}>
+                  <div style={{ fontSize: 7, color: C.mut, marginBottom: 4 }}>{label}</div>
+                  {vals.map(p => (
+                    <div key={p.dataKey} style={{ fontSize: 8, color: p.color || etf.color }}>
+                      {p.name}: {currency} {Number(p.value).toFixed(2)}
+                    </div>
+                  ))}
+                </div>
+              )
+            }}
+          />
+          {/* CI band: stacked areas from lower to lower+height */}
+          <Area
+            type="monotone" dataKey="band_lower" stackId="ci"
+            fill="transparent" stroke="none" fillOpacity={0}
+            isAnimationActive={false} legendType="none" name=""
+          />
+          <Area
+            type="monotone" dataKey="band_height" stackId="ci"
+            fill={etf.color} fillOpacity={0.13} stroke="none"
+            isAnimationActive={false} legendType="none" name="95% CI"
+          />
+          {/* Historical price line */}
+          <Line
+            type="monotone" dataKey="close" name="PRICE"
+            stroke={etf.color} strokeWidth={1.5}
+            dot={false} isAnimationActive={false}
+            connectNulls={false}
+          />
+          {/* Forecast dashed line */}
+          <Line
+            type="monotone" dataKey="forecast" name="FORECAST"
+            stroke={etf.color} strokeWidth={1.5} strokeDasharray="6 4"
+            dot={false} isAnimationActive={false}
+            connectNulls={false}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+      {runAt && (
+        <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut, textAlign: 'right', marginTop: 4 }}>
+          model run: {runAt}
+        </div>
+      )}
+    </>
+  )
+
+  // ── Model tab ───────────────────────────────────────────────────────────────
+  const modelView = forecast ? (
+    <div style={{ maxHeight: 280, overflowY: 'auto' }}>
+      {/* Model name */}
+      <div style={{
+        fontFamily: FONT, fontSize: SIZE.xs, color: etf.color,
+        marginBottom: 6, letterSpacing: '.03em',
+      }}>
+        {forecast.model_name}
+      </div>
+
+      {/* Rationale */}
+      <div style={{
+        fontFamily: FONT, fontSize: 7, color: C.txt,
+        lineHeight: 1.9, marginBottom: 10,
+        background: C.r1, border: `1px solid ${C.grd}`,
+        padding: '6px 8px', borderRadius: 4,
+      }}>
+        {forecast.model_rationale}
+      </div>
+
+      {/* Metrics */}
+      {forecast.metrics && Object.keys(forecast.metrics).length > 0 && (
+        <>
+          <div style={{ fontFamily: FONT, fontSize: 7, color: C.mut, marginBottom: 5 }}>
+            MODEL METRICS
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 4, marginBottom: 10,
+          }}>
+            {Object.entries(forecast.metrics).map(([k, v]) => (
+              <div key={k} style={{
+                background: C.r1, border: `1px solid ${C.grd}`,
+                padding: '4px 6px', borderRadius: 4,
+              }}>
+                <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut }}>{k.toUpperCase()}</div>
+                <div style={{ fontFamily: FONT, fontSize: 8, color: C.txt, fontWeight: 'bold', marginTop: 1 }}>
+                  {typeof v === 'number' ? v.toLocaleString() : String(v)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Feature importance */}
+      {forecast.feature_importance && Object.keys(forecast.feature_importance).length > 0 && (
+        <>
+          <div style={{ fontFamily: FONT, fontSize: 7, color: C.mut, marginBottom: 5 }}>
+            FEATURES & DRIVERS
+          </div>
+          {Object.entries(forecast.feature_importance).map(([name, desc]) => (
+            <div key={name} style={{ marginBottom: 6 }}>
+              <div style={{ fontFamily: FONT, fontSize: 7, color: etf.color, fontWeight: 'bold' }}>
+                {name}
+              </div>
+              <div style={{
+                fontFamily: FONT, fontSize: 7, color: C.txt,
+                lineHeight: 1.8, paddingLeft: 6,
+              }}>
+                {desc}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  ) : null
+
+  // ── Panel render ─────────────────────────────────────────────────────────────
+  return (
+    <div style={{
+      borderRadius: '8px', background: C.r1,
+      border: `1px solid ${C.grd}`,
+      marginBottom: 12,
+      boxShadow: `0 4px 16px rgba(122,26,56,0.07)`,
+    }}>
+      {/* Panel header */}
+      <div style={{
+        padding: '8px 12px 6px',
+        borderBottom: `1px solid ${C.grd}`,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      }}>
+        <div>
+          <div style={{ fontFamily: FONT, fontSize: SIZE.sm, color: etf.color, letterSpacing: '.04em', marginBottom: 2 }}>
+            {etf.name}
+          </div>
+          <div style={{ fontFamily: FONT, fontSize: 7, color: C.mut }}>{etf.symbol}</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Sub-tabs */}
+          {['chart', 'model'].map(t => (
+            <Btn key={t} onClick={() => setSubtab(t)} style={{
+              fontFamily: FONT, fontSize: SIZE.xs,
+              color:      subtab === t ? C.barT : C.mut,
+              background: subtab === t ? C.frame : C.face,
+              border: 'none',
+              boxShadow:  subtab === t ? SUNKEN : RAISED,
+              padding: '2px 8px', borderRadius: '6px', cursor: 'pointer',
+            }}>
+              {t === 'chart' ? '~ CHART' : '◈ MODEL'}
+            </Btn>
+          ))}
+          {/* Run / update model button */}
+          <Btn onClick={handleRun} disabled={running} style={{
+            fontFamily: FONT, fontSize: SIZE.xs,
+            color:     running ? C.mut : C.ok,
+            background: C.face, border: 'none',
+            boxShadow:  running ? SUNKEN : RAISED,
+            padding: '2px 10px', borderRadius: '6px',
+            cursor: running ? 'default' : 'pointer',
+          }}>
+            {running ? '…' : forecast ? '↺ UPDATE' : '▶ RUN'}
+          </Btn>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div style={{ padding: '8px 12px 10px' }}>
+        {runErr && (
+          <div style={{
+            fontFamily: FONT, fontSize: 7, color: C.err,
+            background: '#FFB8C8', border: `1px solid ${C.err}`,
+            padding: '5px 8px', marginBottom: 8, borderRadius: 4,
+            wordBreak: 'break-all', lineHeight: 1.8,
+          }}>
+            ✗ {runErr}
+          </div>
+        )}
+
+        {forecast === undefined && (
+          <div style={{ textAlign: 'center', padding: '24px 0', fontFamily: FONT, fontSize: SIZE.xs, color: C.mut }}>
+            LOADING…
+          </div>
+        )}
+
+        {forecast === null && !running && (
+          <div style={{ textAlign: 'center', padding: '24px 0' }}>
+            <div style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut, marginBottom: 8 }}>
+              NO FORECAST YET
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: 7, color: C.mut }}>
+              click ▶ RUN to build the model
+            </div>
+          </div>
+        )}
+
+        {forecast && subtab === 'chart' && chartView}
+        {forecast && subtab === 'model' && modelView}
+      </div>
+    </div>
+  )
+}
+
+// ── Forecast view (wraps both ETF panels with horizon selector) ───────────────
+function ForecastView({ etfs }) {
+  const [horizon, setHorizon] = useState('1y')
+
+  return (
+    <div>
+      {/* Horizon selector */}
+      <div style={{
+        display: 'flex', gap: 6, marginBottom: 10,
+        padding: '6px 10px',
+        background: C.r1, border: `1px solid ${C.grd}`,
+        borderRadius: 6, alignItems: 'center',
+      }}>
+        <span style={{ fontFamily: FONT, fontSize: 7, color: C.mut, marginRight: 4 }}>HORIZON</span>
+        {FC_HORIZONS.map(h => (
+          <Btn key={h.key} onClick={() => setHorizon(h.key)} style={{
+            fontFamily: FONT, fontSize: SIZE.xs,
+            color:      horizon === h.key ? C.barT : C.mut,
+            background: horizon === h.key ? C.frame : C.face,
+            border: 'none',
+            boxShadow:  horizon === h.key ? SUNKEN : RAISED,
+            padding: '3px 12px', borderRadius: '6px', cursor: 'pointer',
+          }}>
+            {h.label}
+          </Btn>
+        ))}
+        <span style={{ fontFamily: FONT, fontSize: 7, color: C.mut, marginLeft: 4 }}>
+          · {FC_HORIZONS.find(h => h.key === horizon)?.desc}
+        </span>
+      </div>
+
+      {etfs.map(etf => (
+        <ForecastPanel key={`${etf.symbol}-${horizon}`} etf={etf} horizon={horizon} />
+      ))}
+
+      <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut, borderLeft: `2px solid ${C.grd}`, paddingLeft: 6, marginTop: 2 }}>
+        FORECASTS ARE STATISTICAL ESTIMATES ONLY · NOT FINANCIAL ADVICE · EDUCATIONAL USE
+      </div>
+    </div>
+  )
+}
+
 // ── ETFWindow ────────────────────────────────────────────────────────────────
 export default function ETFWindow({ onTitleDown, onFocus, embedded = false }) {
   const [range, setRange]               = useState('1mo')
   const [tick, setTick]                 = useState(0)
   const [showInvestments, setShowInv]   = useState(true)
+  const [mode, setMode]                 = useState('chart')  // 'chart' | 'forecast'
+  const [etfs, setEtfs]                 = useState(() => {
+    try { return JSON.parse(localStorage.getItem('etf_tickers') || 'null') || DEFAULT_ETFS }
+    catch { return DEFAULT_ETFS }
+  })
+  const [showAddTicker, setShowAddTicker] = useState(false)
+  const [newSymbol, setNewSymbol]         = useState('')
+  const [newName, setNewName]             = useState('')
+  const [newSubname, setNewSubname]       = useState('')
+  const [tickerErr, setTickerErr]         = useState('')
+
+  const handleAddTicker = () => {
+    const sym = newSymbol.trim().toUpperCase()
+    if (!sym) { setTickerErr('ENTER A SYMBOL'); return }
+    if (etfs.find(e => e.symbol === sym)) { setTickerErr('TICKER ALREADY ADDED'); return }
+    const palette = PALETTE[etfs.length % PALETTE.length]
+    const next = [...etfs, { symbol: sym, name: newName.trim() || sym, subname: newSubname.trim() || '', ...palette }]
+    setEtfs(next)
+    localStorage.setItem('etf_tickers', JSON.stringify(next))
+    setNewSymbol(''); setNewName(''); setNewSubname(''); setTickerErr(''); setShowAddTicker(false)
+  }
+
+  const handleRemoveTicker = (symbol) => {
+    const next = etfs.filter(e => e.symbol !== symbol)
+    setEtfs(next)
+    localStorage.setItem('etf_tickers', JSON.stringify(next))
+  }
 
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 60 * 60 * 1000)
@@ -545,9 +988,9 @@ export default function ETFWindow({ onTitleDown, onFocus, embedded = false }) {
     <div onMouseDown={embedded ? undefined : onFocus} style={embedded ? {} : undefined}>
       {/* Title bar */}
       <div onMouseDown={onTitleDown} style={{
-        background: C.bar, padding: '3px 10px',
+        background: C.bar, padding: '6px 12px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        userSelect: 'none', cursor: 'grab',
+        userSelect: 'none', cursor: 'grab', borderTopLeftRadius: '10px', borderTopRightRadius: '10px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg width="13" height="13" viewBox="0 0 16 16" style={{ imageRendering: 'pixelated' }}>
@@ -563,52 +1006,145 @@ export default function ETFWindow({ onTitleDown, onFocus, embedded = false }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {/* Portfolio toggle */}
-          <button onClick={() => setShowInv(s => !s)} style={{
-            fontFamily: FONT, fontSize: 7,
-            color: showInvestments ? C.barT : C.mut,
-            background: showInvestments ? C.frame : C.face,
-            border: 'none', boxShadow: showInvestments ? SUNKEN : RAISED,
-            padding: '2px 7px', cursor: 'pointer',
-          }}>
-            {showInvestments ? '★ PORTFOLIO' : '☆ PORTFOLIO'}
-          </button>
-
-          {/* Range buttons */}
-          {RANGES.map(r => (
-            <button key={r.key} onClick={() => setRange(r.key)} style={{
-              fontFamily: FONT, fontSize: 7,
-              color: range === r.key ? C.barT : C.mut,
-              background: range === r.key ? C.frame : C.face,
-              border: 'none', boxShadow: range === r.key ? SUNKEN : RAISED,
-              padding: '2px 7px', cursor: 'pointer',
+          {/* Portfolio toggle (chart mode only) */}
+          {mode === 'chart' && (
+            <Btn onClick={() => setShowInv(s => !s)} style={{
+              fontFamily: FONT, fontSize: SIZE.xs,
+              color: showInvestments ? C.barT : C.mut,
+              background: showInvestments ? C.frame : C.face,
+              border: 'none', boxShadow: showInvestments ? SUNKEN : RAISED,
+              padding: '3px 10px', borderRadius: '6px', cursor: 'pointer',
             }}>
-              {r.label}
-            </button>
-          ))}
+            * PORTFOLIO
+            </Btn>
+          )}
 
-          <button onClick={refresh} title="Refresh" style={{
-            fontFamily: FONT, fontSize: 10, color: C.barT,
-            background: 'transparent', border: 'none',
-            cursor: 'pointer', padding: '0 4px', lineHeight: 1,
-          }}>↻</button>
+          {/* Ticker toggle (chart mode only) */}
+          {mode === 'chart' && (
+            <Btn onClick={() => setShowAddTicker(s => !s)} style={{
+              fontFamily: FONT, fontSize: SIZE.xs, color: showAddTicker ? C.err : C.mut,
+              background: C.face, border: 'none', boxShadow: RAISED,
+              padding: '3px 8px', borderRadius: '6px', 
+            }}>
+              {showAddTicker ? '✕' : '+ TICKER'}
+            </Btn>
+          )}
+
+          {/* Mode toggle */}
+          {mode === 'forecast' && (
+              <Btn onClick={() => setMode('chart')} style={{
+                fontFamily: FONT, fontSize: SIZE.xs, color: C.mut,
+                background: C.face, border: 'none', boxShadow: RAISED,
+                padding: '3px 10px', borderRadius: '6px'
+              }}>
+                ◄ BACK
+              </Btn>
+        )}
+          <Btn onClick={() => setMode(m => m === 'chart' ? 'forecast' : 'chart')} style={{
+            fontFamily: FONT, fontSize: SIZE.xs,
+            color:      mode === 'forecast' ? C.barT : C.mut,
+            background: mode === 'forecast' ? C.frame : C.face,
+            border: 'none', boxShadow: mode === 'forecast' ? SUNKEN : RAISED,
+            padding: '3px 10px', borderRadius: '6px', 
+          }}>
+            ~ FORECAST
+          </Btn>
         </div>
       </div>
 
+      {/* Range sub-bar (chart mode only) */}
+      {mode === 'chart' && (
+        <div style={{
+        display: 'flex', gap: 6, margin: 10,
+        padding: '6px 10px',
+        background: C.r1, border: `1px solid ${C.grd}`,
+        borderRadius: 6, alignItems: 'center',
+        FONT: FONT, fontSize: 8, color: C.mut,
+        }}>SELECT RANGE
+          {RANGES.map(r => (
+            <Btn key={r.key} onClick={() => setRange(r.key)} style={{
+              fontFamily: FONT, fontSize: SIZE.xs,
+              color: range === r.key ? C.barT : C.mut,
+              background: range === r.key ? C.frame : C.face,
+              border: 'none', boxShadow: range === r.key ? SUNKEN : RAISED,
+              padding: '3px 10px', borderRadius: '6px',
+            }}>
+              {r.label}
+            </Btn>
+          ))}
+          <Btn onClick={refresh} title="Refresh" style={{
+            fontFamily: FONT, fontSize: 13, color: C.barT,
+            background: C.frame, border: 'none',
+            padding: '2px 6px', lineHeight: 1, borderRadius: '6px',
+          }}>↻</Btn>
+        </div>
+      )}
+
       {/* Content */}
       <div style={{ padding: '10px 10px 4px', background: 'transparent', overflowY: 'auto', maxHeight: 'calc(100vh - 60px)' }}>
-        <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut, marginBottom: 8, borderLeft: `2px solid ${C.grd}`, paddingLeft: 6 }}>
-          DELAYED DATA · NOT FINANCIAL ADVICE · EDUCATIONAL ONLY
-        </div>
+        {mode === 'chart' && (
+          <>
+            <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut, marginBottom: 8, borderLeft: `2px solid ${C.grd}`, paddingLeft: 6 }}>
+              DELAYED DATA · NOT FINANCIAL ADVICE · EDUCATIONAL ONLY
+            </div>
+            {showAddTicker && (
+              <div style={{ marginBottom: 10, padding: '8px 10px', background: C.r1, border: `1px solid ${C.grd}`, borderRadius: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 8px', marginBottom: 6 }}>
+                  <div>
+                    <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut, marginBottom: 3 }}>SYMBOL *</div>
+                    <input value={newSymbol} onChange={e => setNewSymbol(e.target.value)}
+                      placeholder="e.g. SPUS.L"
+                      style={{ fontFamily: FONT, fontSize: 8, color: C.txt, background: C.inp,
+                        border: `1px solid ${C.grd}`, padding: '3px 6px', width: '100%',
+                        outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut, marginBottom: 3 }}>NAME</div>
+                    <input value={newName} onChange={e => setNewName(e.target.value)}
+                      placeholder="e.g. SP 500 Shariah"
+                      style={{ fontFamily: FONT, fontSize: 8, color: C.txt, background: C.inp,
+                        border: `1px solid ${C.grd}`, padding: '3px 6px', width: '100%',
+                        outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut, marginBottom: 3 }}>SUBNAME</div>
+                    <input value={newSubname} onChange={e => setNewSubname(e.target.value)}
+                      placeholder="e.g. Wahed — USD"
+                      style={{ fontFamily: FONT, fontSize: 8, color: C.txt, background: C.inp,
+                        border: `1px solid ${C.grd}`, padding: '3px 6px', width: '100%',
+                        outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+                {tickerErr && <div style={{ fontFamily: FONT, fontSize: 6, color: C.err, marginBottom: 4 }}>✗ {tickerErr}</div>}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Btn onClick={handleAddTicker} style={{
+                    fontFamily: FONT, fontSize: SIZE.xs, color: C.ok,
+                    background: C.face, border: 'none', boxShadow: RAISED,
+                    padding: '3px 14px', borderRadius: '6px', cursor: 'pointer',
+                  }}>▶ ADD</Btn>
+                </div>
+              </div>
+            )}
+            {etfs.map(etf => (
+              <ETFPanel
+                key={etf.symbol + range + tick}
+                etf={etf}
+                range={range}
+                showInvestments={showInvestments}
+                isDefault={DEFAULT_ETFS.some(d => d.symbol === etf.symbol)}
+                onRemove={handleRemoveTicker}
+              />
+            ))}
+            <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut, textAlign: 'right', paddingBottom: 4 }}>
+              REFRESHED: {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+              {range === '1wk' ? ' · 1H BARS' : ' · 1D BARS'}
+            </div>
+          </>
+        )}
 
-        {ETFS.map(etf => (
-          <ETFPanel key={etf.symbol + range + tick} etf={etf} range={range} showInvestments={showInvestments} />
-        ))}
-
-        <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut, textAlign: 'right', paddingBottom: 4 }}>
-          REFRESHED: {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-          {range === '1wk' ? ' · 1H BARS' : ' · 1D BARS'}
-        </div>
+        {mode === 'forecast' && (
+            <ForecastView etfs={etfs} />
+          )}
       </div>
     </div>
   )

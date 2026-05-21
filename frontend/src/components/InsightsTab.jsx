@@ -21,7 +21,7 @@ function ChartWrap({ title, subtitle, children }) {
     <div style={{ marginBottom: 14 }}>
       <SectionLabel>{title}</SectionLabel>
       <div style={{
-        background: C.r1, border: `1px solid ${C.grd}`, padding: '8px 8px 4px',
+        background: C.r1, border: `1px solid ${C.grd}`, padding: '8px 8px 4px',borderRadius: "5px"
       }}>
         {children}
         {subtitle && (
@@ -43,6 +43,7 @@ function InsightCard({ label, value, sub }) {
       background: C.r2, border: `1px solid ${C.grd}`,
       padding: '6px 8px',
       boxShadow: `inset -1px -1px 0 ${C.hi}`,
+      borderRadius: "5px"
     }}>
       <div style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut, letterSpacing: '.04em' }}>{label}</div>
       <div style={{ fontFamily: FONT, fontSize: SIZE.md, color: C.txt, fontWeight: 'bold', margin: '2px 0' }}>{value}</div>

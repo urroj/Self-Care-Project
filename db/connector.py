@@ -477,3 +477,67 @@ def delete_etf_investment(investment_id: str) -> None:
         "DELETE FROM etf_investments WHERE id = %s",
         (investment_id,)
     )
+
+
+# ── ETF forecasts ─────────────────────────────────────────────────────────────
+
+def save_etf_forecast(
+    symbol:             str,
+    horizon:            str,
+    model_name:         str,
+    model_rationale:    str,
+    forecast_from:      str,
+    forecast_dates:     list,
+    forecast_values:    list,
+    conf_lower:         list,
+    conf_upper:         list,
+    metrics:            dict,
+    feature_importance: dict,
+    currency:           str = "",
+    history_dates:      list | None = None,
+    history_values:     list | None = None,
+) -> str:
+    """Persist a forecast run. Returns the new row UUID."""
+    rows = _fetch(
+        """
+        INSERT INTO etf_forecasts
+            (symbol, horizon, model_name, model_rationale, forecast_from,
+             forecast_dates, forecast_values, conf_lower, conf_upper,
+             metrics, feature_importance, currency,
+             history_dates, history_values)
+        VALUES (%s, %s, %s, %s, %s::date, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id::text
+        """,
+        (
+            symbol, horizon, model_name, model_rationale, forecast_from,
+            psycopg2.extras.Json(forecast_dates),
+            psycopg2.extras.Json(forecast_values),
+            psycopg2.extras.Json(conf_lower),
+            psycopg2.extras.Json(conf_upper),
+            psycopg2.extras.Json(metrics),
+            psycopg2.extras.Json(feature_importance),
+            currency,
+            psycopg2.extras.Json(history_dates or []),
+            psycopg2.extras.Json(history_values or []),
+        ),
+    )
+    return rows[0]["id"]
+
+
+def get_etf_forecast(symbol: str, horizon: str) -> dict | None:
+    """Return the most recent forecast for a symbol+horizon, or None."""
+    rows = _fetch(
+        """
+        SELECT id::text, symbol, horizon, model_name, model_rationale,
+               forecast_from::text, forecast_dates, forecast_values,
+               conf_lower, conf_upper, metrics, feature_importance,
+               currency, history_dates, history_values,
+               to_char(created_at, 'YYYY-MM-DD HH24:MI') AS run_at
+        FROM etf_forecasts
+        WHERE symbol = %s AND horizon = %s
+        ORDER BY created_at DESC
+        LIMIT 1
+        """,
+        (symbol, horizon),
+    )
+    return rows[0] if rows else None

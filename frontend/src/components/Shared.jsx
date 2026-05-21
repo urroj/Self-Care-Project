@@ -1,6 +1,7 @@
 // components/Shared.jsx — reusable pixel-aesthetic UI primitives
 
-import { C, FONT, RAISED, SUNKEN,SIZE } from '../theme.js'
+import { useState } from 'react'
+import { C, FONT, RAISED, SUNKEN, SIZE } from '../theme.js'
 
 // ── Typography ────────────────────────────────────────────────────────────────
 
@@ -104,17 +105,32 @@ export function GroupBox({ title, children, cols, style }) {
 
 // ── Buttons ───────────────────────────────────────────────────────────────────
 
-export function PixelBtn({ children, onClick, color, style, disabled }) {
+export function PixelBtn({ children, onClick, color, style, disabled, onMouseDown, title }) {
+  const [hov, setHov] = useState(false)
+  const [act, setAct] = useState(false)
   return (
-    <button onClick={onClick} disabled={disabled} style={{
-      fontFamily: FONT, fontSize: SIZE.md, letterSpacing: '.05em',
-      color: disabled ? C.mut : (color || C.txt),
-      background: C.face, border: 'none',
-      boxShadow: disabled ? SUNKEN : RAISED,
-      padding: '3px 14px', cursor: disabled ? 'default' : 'pointer',
-      opacity: disabled ? 0.6 : 1,
-      ...style,
-    }}>
+    <button
+      onClick={onClick}
+      onMouseDown={e => { if (!disabled) { setAct(true); onMouseDown?.(e) } }}
+      onMouseUp={() => setAct(false)}
+      onMouseEnter={() => !disabled && setHov(true)}
+      onMouseLeave={() => { setHov(false); setAct(false) }}
+      disabled={disabled}
+      title={title}
+      style={{
+        fontFamily: FONT, fontSize: SIZE.md, letterSpacing: '.05em',
+        color: disabled ? C.mut : (color || C.txt),
+        background: C.face, border: 'none',
+        boxShadow: disabled ? SUNKEN : act ? SUNKEN : RAISED,
+        padding: '4px 16px', cursor: disabled ? 'default' : 'pointer',
+        borderRadius: '6px',
+        opacity: disabled ? 0.6 : 1,
+        transform: !disabled && act ? 'scale(0.95) translateY(1px)' : !disabled && hov ? 'scale(1.04)' : 'scale(1)',
+        filter: hov && !act && !disabled ? 'brightness(1.07)' : 'none',
+        transition: 'transform 0.10s ease, filter 0.10s ease, box-shadow 0.10s ease',
+        ...style,
+      }}
+    >
       {children}
     </button>
   )
@@ -127,6 +143,7 @@ export function StatCard({ label, value, unit }) {
     <div style={{
       background: C.face, boxShadow: SUNKEN,
       padding: '5px 8px', textAlign: 'center',
+      borderRadius: "5px"
     }}>
       <div style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut, letterSpacing: '.04em' }}>
         {label}
@@ -228,7 +245,7 @@ export function PhaseProgress({ completed }) {
   }
 
   return (
-    <div style={{ padding: '7px 10px', background: C.r1, border: `1px solid ${C.grd}`, marginBottom: 10 }}>
+    <div style={{ padding: '7px 10px', background: C.r1, border: `1px solid ${C.grd}`, marginBottom: 10 , borderRadius: "5px"}}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
         <span style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut, letterSpacing: '.04em' }}>
           {label}

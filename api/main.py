@@ -538,6 +538,70 @@ def remove_investment(investment_id: str):
         raise HTTPException(500, str(e))
 
 
+# ── ETF forecasts ─────────────────────────────────────────────────────────────
+
+@app.post("/api/etf/{symbol}/forecast")
+def run_etf_forecast(symbol: str, horizon: str = Query("1y")):
+    """
+    Run the forecast model for an ETF and save results to DB.
+    horizon: '1y' | '5y' | '10y'
+    """
+    from api.forecasting import run_forecast
+    from db.connector import save_etf_forecast as _save
+
+    symbol = symbol.upper()
+    try:
+        result = run_forecast(symbol, horizon)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"Forecast error: {str(e)[:300]}")
+
+    try:
+        _save(
+            symbol             = result["symbol"],
+            horizon            = result["horizon"],
+            model_name         = result["model_name"],
+            model_rationale    = result["model_rationale"],
+            forecast_from      = result["forecast_from"],
+            forecast_dates     = result["forecast_dates"],
+            forecast_values    = result["forecast_values"],
+            conf_lower         = result["conf_lower"],
+            conf_upper         = result["conf_upper"],
+            metrics            = result["metrics"],
+            feature_importance = result["feature_importance"],
+            currency           = result["currency"],
+            history_dates      = result["history_dates"],
+            history_values     = result["history_values"],
+        )
+    except Exception as e:
+        err = str(e)
+        if "etf_forecasts" in err and "does not exist" in err:
+            raise HTTPException(500, "TABLE NOT FOUND: run etf_forecasts_migration.sql first")
+        raise HTTPException(500, f"DB save failed: {err[:200]}")
+
+    return result
+
+
+@app.get("/api/etf/{symbol}/forecast")
+def get_etf_forecast_route(symbol: str, horizon: str = Query("1y")):
+    """Return the latest saved forecast for a symbol and horizon."""
+    from db.connector import get_etf_forecast as _get
+
+    symbol = symbol.upper()
+    try:
+        result = _get(symbol, horizon)
+    except Exception as e:
+        err = str(e)
+        if "etf_forecasts" in err and "does not exist" in err:
+            raise HTTPException(500, "TABLE NOT FOUND: run etf_forecasts_migration.sql first")
+        raise HTTPException(500, err)
+
+    if result is None:
+        raise HTTPException(404, f"No forecast found for {symbol} with horizon={horizon}")
+    return result
+
+
 # ── ETF data (Yahoo Finance proxy) ────────────────────────────────────────────
 
 @app.get("/api/etf/{symbol}")

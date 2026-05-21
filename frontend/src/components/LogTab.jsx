@@ -70,7 +70,7 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
       .then(logs => {
         // Normalise DB date — may be "2025-05-20" or "2025-05-20T00:00:00" or "2025-05-20 00:00:00"
         const match = logs.find(l =>
-          String(l.log_date) === '2026-05-18' && l.cycle_id === activeCycle.id
+          String(l.log_date).slice(0, 10) === form.log_date && l.cycle_id === activeCycle.id
         )
         
 
@@ -179,14 +179,14 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
   }
 
   return (
-    <div style={{ padding: '10px 12px', overflowY: 'auto', maxHeight: 'calc(100vh - 140px)' }}>
+    <div style={{ padding: '10px 12px', overflowY: 'auto', maxHeight: 'calc(100vh - 140px)'}}>
 
       {/* No active cycle banner */}
       {!activeCycle && (
         <div style={{
           background: '#FFE8F2', border: `2px solid ${C.frame}`,
           padding: '8px 12px', marginBottom: 10,
-          fontFamily: FONT, fontSize: SIZE.md, color: '#7A1A38',
+          fontFamily: FONT, fontSize: SIZE.md, color: '#7A1A38'
         }}>
           ⚠ No active cycle. Go to MY CYCLES → START NEW CYCLE before logging.
         </div>
@@ -230,13 +230,14 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
           background: C.face, boxShadow: RAISED,
           padding: '2px 10px', marginBottom: 8,
           fontFamily: FONT, fontSize: SIZE.sm, color: C.mut,
+          borderRadius: "5px"
         }}>
           <span style={{ color: C.sage }}>●</span>
           Cycle #{activeCycle.cycle_number} · started {activeCycle.start_date}
           {existingLog && (
             <span style={{
               marginLeft: 8, background: C.ok, color: '#fff',
-              padding: '0 5px', fontSize: 7, fontFamily: FONT,
+              padding: '1px 5px', fontSize: 7, fontFamily: FONT,borderRadius: "5px"
             }}>
               LOG EXISTS
             </span>
@@ -249,11 +250,11 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10}}>
 
         {/* ── Left column ─────────────────────────────────────────── */}
         <div>
-          <GroupBox title="DATE &amp; FLOW">
+          <GroupBox title="DATE &amp; FLOW" style={{ borderRadius: "5px" }}>
             <Label>log date</Label>
             <Inp type="date" lang="en-CA" value={form.log_date}
             onChange={e => f('log_date', e.target.value.replace(/\//g, '-'))}
@@ -267,7 +268,7 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
             </Sel>
           </GroupBox>
 
-          <GroupBox title="CERVICAL MUCUS">
+          <GroupBox title="CERVICAL MUCUS" style={{ borderRadius: "5px" }}>
             <Sel value={form.mucus_type}
               onChange={e => f('mucus_type', e.target.value)}>
               <option value="">— select —</option>
@@ -276,7 +277,7 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
             </Sel>
           </GroupBox>
 
-          <GroupBox title="BIOMETRICS" cols="1fr 1fr">
+          <GroupBox title="BIOMETRICS" cols="1fr 1fr" style={{ borderRadius: "5px" }}>
             <div>
               <Label>weight (kg)</Label>
               <Inp type="number" step="0.1" placeholder="65.0"
@@ -289,7 +290,7 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
             </div>
           </GroupBox>
 
-          <GroupBox title="SLEEP &amp; STRESS">
+          <GroupBox title="SLEEP &amp; STRESS" style={{ borderRadius: "5px" }}>
             <Label>sleep hours</Label>
             <Inp type="number" step="0.5" min="0" max="14" placeholder="7.5"
               value={form.sleep_hours} onChange={e => f('sleep_hours', e.target.value)}
@@ -313,7 +314,7 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
 
         {/* ── Right column ─────────────────────────────────────────── */}
         <div>
-          <GroupBox title="MOOD" cols="1fr 1fr">
+          <GroupBox title="MOOD" cols="1fr 1fr" style={{ borderRadius: "5px" }}>
             {MOODS.map(m => (
               <CheckRow key={m} label={m}
                 checked={form.moods.includes(m)}
@@ -321,7 +322,7 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
             ))}
           </GroupBox>
 
-          <GroupBox title="SYMPTOMS" cols="1fr 1fr">
+          <GroupBox title="SYMPTOMS" cols="1fr 1fr" style={{ borderRadius: "5px" }}>
             {SYMS.map(([k, l]) => (
               <CheckRow key={k} label={l}
                 checked={form[k]}
@@ -334,9 +335,9 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
       {/* Action buttons */}
       <div style={{
         borderTop: `1px solid ${C.grd}`, paddingTop: 8, marginTop: 4,
-        display: 'flex', justifyContent: 'flex-end', gap: 6,
+        display: 'flex', justifyContent: 'flex-end', gap: 6
       }}>
-        <PixelBtn onClick={handleClear} color={C.mut}>CLEAR</PixelBtn>
+        <PixelBtn onClick={handleClear} color={C.mut} >CLEAR</PixelBtn>
         <PixelBtn onClick={handleSave} color={C.ok} disabled={saving || checking}
           style={{ minWidth: 110 }}>
           {checking ? 'CHECKING…' : saving ? 'SAVING…' : existingLog ? '▶ UPDATE LOG' : '▶ SAVE LOG'}

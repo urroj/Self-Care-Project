@@ -23,17 +23,17 @@ export const C = {
 }
 
 export const FONT   = '"Press Start 2P", "Courier New", monospace'
-export const RAISED = `inset -2px -2px 0 ${C.sh}, inset 2px 2px 0 ${C.hi}`
-export const SUNKEN = `inset 2px 2px 0 ${C.sh}, inset -2px -2px 0 ${C.hi}`
+export const RAISED = `inset -1px -2px 0 rgba(90,0,32,0.28), inset 1px 1px 0 rgba(255,208,224,0.75)`
+export const SUNKEN = `inset 1px 2px 0 rgba(90,0,32,0.22), inset -1px -1px 0 rgba(255,208,224,0.55)`
 
 // Font size scale for Press Start 2P
 // This font renders visually larger than Courier New — sizes are tuned down
 export const SIZE = {
-  xs:   8,    // labels, tags, badges, status bar
-  sm:   9,    // menu items, tabs, secondary labels, table text
-  md:   10,   // body text, inputs, buttons, notifications
-  lg:   12,   // run-card values, active cycle info values
-  xl:   16,   // stat card numbers
+  xs:   9,    // labels, tags, badges, status bar
+  sm:   10,   // menu items, tabs, secondary labels, table text
+  md:   11,   // body text, inputs, buttons, notifications
+  lg:   13,   // run-card values, active cycle info values
+  xl:   18,   // stat card numbers
 }
 
 // Shared table cell style

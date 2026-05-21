@@ -4,6 +4,50 @@ import { C, FONT, RAISED, SUNKEN, SIZE } from '../theme.js'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
+function Btn({ children, onClick, disabled, style, title }) {
+  const [hov, setHov] = useState(false)
+  const [act, setAct] = useState(false)
+  return (
+    <button
+      onClick={onClick} disabled={disabled} title={title}
+      onMouseEnter={() => !disabled && setHov(true)}
+      onMouseLeave={() => { setHov(false); setAct(false) }}
+      onMouseDown={() => !disabled && setAct(true)}
+      onMouseUp={() => setAct(false)}
+      style={{
+        ...style,
+        transform: !disabled && act ? 'scale(0.95) translateY(1px)' : !disabled && hov ? 'scale(1.05)' : 'scale(1)',
+        filter: hov && !act && !disabled ? 'brightness(1.08)' : 'none',
+        transition: 'transform 0.10s ease, filter 0.10s ease, box-shadow 0.10s ease',
+      }}
+    >{children}</button>
+  )
+}
+
+function JTabBtn({ label, active, onClick }) {
+  const [hov, setHov] = useState(false)
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => !active && setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        flex: 1, fontFamily: FONT, fontSize: SIZE.xs, letterSpacing: '.06em',
+        color:      active ? C.txt : hov ? C.txt : C.barT,
+        background: active ? C.win : hov ? 'rgba(255,255,255,0.18)' : 'transparent',
+        border: 'none',
+        borderBottom: active ? `2px solid ${C.win}` : 'none',
+        padding: '7px 0',
+        marginBottom: active ? -2 : 0,
+        position: 'relative', zIndex: active ? 2 : 1,
+        borderTopLeftRadius: '5px', borderTopRightRadius: '5px',
+        transition: 'color 0.12s, background 0.12s',
+        cursor: 'pointer',
+      }}
+    >{label}</button>
+  )
+}
+
 const WEATHER_OPTIONS = [
   { emoji: '☀️', label: 'sunny'  },
   { emoji: '⛅',  label: 'cloudy' },
@@ -55,14 +99,15 @@ function offsetDate(dateStr, days) {
 // ── Shared habit sub-components ───────────────────────────────────────────────
 function HGroup({ title, children }) {
   return (
-    <div style={{ border: `1px solid ${C.grd}`, marginBottom: 8 }}>
+    <div style={{ border: `1px solid ${C.grd}`, marginBottom: 8, borderRadius: "5px"}}>
       <div style={{
         background: C.bar, padding: '4px 8px',
         fontFamily: FONT, fontSize: 7, color: C.barT, letterSpacing: '.08em',
+        borderTopLeftRadius: "5px", borderTopRightRadius: "5px",
       }}>
         {title}
       </div>
-      <div style={{ padding: '8px 10px', background: C.win }}>
+      <div style={{ padding: '8px 10px', background: C.win ,borderBottomLeftRadius: "5px", borderBottomRightRadius: "5px"}}>
         {children}
       </div>
     </div>
@@ -71,18 +116,18 @@ function HGroup({ title, children }) {
 
 function PixelCheck({ checked, onChange, label }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: 5 }}>
+    <label style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7, cursor: 'pointer' }}>
       <div onClick={() => onChange(!checked)} style={{
-        width: 12, height: 12, flexShrink: 0,
+        width: 14, height: 14, flexShrink: 0,
         border: `2px solid ${C.frame}`,
         background: checked ? C.frame : C.inp,
         boxShadow: checked ? SUNKEN : RAISED,
-        cursor: 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'background 0.14s, box-shadow 0.12s',
       }}>
-        {checked && <span style={{ color: '#fff', fontSize: 7, lineHeight: 1 }}>✓</span>}
+        {checked && <span style={{ color: '#fff', fontSize: 8, lineHeight: 1 }}>✓</span>}
       </div>
-      <span style={{ fontFamily: FONT, fontSize: 7, color: checked ? C.frame : C.mut }}>
+      <span style={{ fontFamily: FONT, fontSize: SIZE.xs, color: checked ? C.frame : C.mut, transition: 'color 0.14s' }}>
         {label}
       </span>
     </label>
@@ -226,9 +271,9 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
   return (
     <div
       style={embedded ? {} : {
-        position: 'absolute', left: pos.x, top: pos.y, width: 420, zIndex,
+        position: 'absolute', left: pos.x, top: pos.y, width: 520, zIndex,
         border: `2px solid ${C.frame}`,
-        boxShadow: `3px 3px 0 ${C.sh}, 0 12px 40px rgba(180,60,120,0.30)`,
+        boxShadow: `0 8px 40px rgba(122,26,56,0.16), 0 2px 10px rgba(122,26,56,0.09)`,
         background: 'rgba(255, 240, 248, 0.92)',
         backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
       }}
@@ -236,13 +281,14 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
     >
       {/* Title bar */}
       <div onMouseDown={onTitleDown} style={{
-        background: C.bar, padding: '3px 10px',
+        background: C.bar, padding: '6px 12px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         userSelect: 'none', cursor: 'grab',
+        borderTopLeftRadius: '10px', borderTopRightRadius: '10px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <i className="ti ti-notebook" style={{ fontSize: 13, color: C.barT }} />
-          <span style={{ fontFamily: FONT, fontSize: SIZE.sm, color: C.barT, letterSpacing: '.08em' }}>
+          <span style={{ fontFamily: FONT, fontSize: SIZE.sm, color: C.barT, letterSpacing: '.08em' ,}}>
             MY JOURNAL
           </span>
         </div>
@@ -254,18 +300,7 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
       {/* Tab bar */}
       <div style={{ display: 'flex', background: C.face, borderBottom: `2px solid ${C.frame}` }}>
         {[{ id: 'journal', label: 'JOURNAL' }, { id: 'habits', label: 'HABITS' }].map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-            flex: 1, fontFamily: FONT, fontSize: SIZE.xs, letterSpacing: '.06em',
-            color:       activeTab === t.id ? C.txt   : C.barT,
-            background:  activeTab === t.id ? C.win   : 'transparent',
-            border: 'none',
-            borderBottom: activeTab === t.id ? `2px solid ${C.win}` : 'none',
-            padding: '5px 0', cursor: 'pointer',
-            marginBottom: activeTab === t.id ? -2 : 0,
-            position: 'relative', zIndex: activeTab === t.id ? 2 : 1,
-          }}>
-            {t.label}
-          </button>
+          <JTabBtn key={t.id} label={t.label} active={activeTab === t.id} onClick={() => setActiveTab(t.id)} />
         ))}
       </div>
 
@@ -293,8 +328,8 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
         }}>
           <div style={{ marginBottom: 6 }}>⚠ AN ENTRY ALREADY EXISTS FOR THIS DATE. OVERWRITE IT?</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={doSave} style={{ fontFamily: FONT, fontSize: 7, color: C.ok, background: C.face, border: 'none', boxShadow: RAISED, padding: '3px 12px', cursor: 'pointer' }}>YES, OVERWRITE</button>
-            <button onClick={() => setConfirmOverwrite(false)} style={{ fontFamily: FONT, fontSize: 7, color: C.mut, background: C.face, border: 'none', boxShadow: RAISED, padding: '3px 12px', cursor: 'pointer' }}>CANCEL</button>
+            <Btn onClick={doSave} style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.ok, background: C.face, border: 'none', boxShadow: RAISED, padding: '4px 14px', borderRadius: '6px', cursor: 'pointer' }}>YES, OVERWRITE</Btn>
+            <Btn onClick={() => setConfirmOverwrite(false)} style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut, background: C.face, border: 'none', boxShadow: RAISED, padding: '4px 14px', borderRadius: '6px', cursor: 'pointer' }}>CANCEL</Btn>
           </div>
         </div>
       )}
@@ -304,16 +339,16 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
         <div style={{ padding: '14px 16px 10px', borderBottom: `1px solid ${C.grd}`, background: 'rgba(255,245,248,0.6)' }}>
           {/* Nav */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <button onClick={goToPrev} style={{ fontFamily: FONT, color: C.mut, background: C.face, border: 'none', boxShadow: RAISED, padding: '4px 14px', cursor: 'pointer', fontSize: 14 }}>◄</button>
+            <Btn onClick={goToPrev} style={{ fontFamily: FONT, color: C.mut, background: C.face, border: 'none', boxShadow: RAISED, padding: '5px 18px', fontSize: 14, borderRadius: '6px', cursor: 'pointer' }}>◄</Btn>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: FONT, fontSize: SIZE.lg, color: C.frame, letterSpacing: '.06em', lineHeight: 1.3 }}>{dayName.toUpperCase()}</div>
               <div style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut, marginTop: 2, letterSpacing: '.04em' }}>
                 {monthDay}, {year}
-                {isToday && <span style={{ marginLeft: 6, background: C.bar, color: C.barT, padding: '0 5px', fontSize: 7 }}>TODAY</span>}
-                {savedEntry !== null && !isDirty && <span style={{ marginLeft: 6, background: C.ok, color: '#fff', padding: '0 5px', fontSize: 7 }}>SAVED</span>}
+                {isToday && <span style={{ marginLeft: 6, background: C.bar, color: C.barT, padding: '4px 5px', fontSize: 7 , borderRadius: '5px'}}>TODAY</span>}
+                {savedEntry !== null && !isDirty && <span style={{ marginLeft: 6, background: C.ok, color: '#fff', padding: '4px 5px', fontSize: 7 , borderRadius: '5px'}}>SAVED</span>}
               </div>
             </div>
-            <button onClick={goToNext} disabled={isToday} style={{ fontFamily: FONT, color: isToday ? C.grd : C.mut, background: C.face, border: 'none', boxShadow: isToday ? SUNKEN : RAISED, padding: '4px 14px', cursor: isToday ? 'default' : 'pointer', opacity: isToday ? 0.5 : 1, fontSize: 14 }}>►</button>
+            <Btn onClick={goToNext} disabled={isToday} style={{ fontFamily: FONT, color: isToday ? C.grd : C.mut, background: C.face, border: 'none', boxShadow: isToday ? SUNKEN : RAISED, padding: '5px 18px', cursor: isToday ? 'default' : 'pointer', opacity: isToday ? 0.5 : 1, fontSize: 14, borderRadius: '6px' }}>►</Btn>
           </div>
           {/* Jump to date */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -325,7 +360,8 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
             <span style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut }}>WEATHER:</span>
             <div style={{ display: 'flex', gap: 4 }}>
               {WEATHER_OPTIONS.map(w => (
-                <button key={w.label} onClick={() => setWeather(weather === w.label ? '' : w.label)} title={w.label} style={{ fontSize: 18, padding: '2px 4px', border: 'none', background: weather === w.label ? C.face : 'transparent', boxShadow: weather === w.label ? SUNKEN : 'none', cursor: 'pointer', borderRadius: 0, outline: weather === w.label ? `2px solid ${C.frame}` : 'none', lineHeight: 1 }}>{w.emoji}</button>
+                <Btn key={w.label} onClick={() => setWeather(weather === w.label ? '' : w.label)}
+                title={w.label} style={{ fontSize: 20, padding: '3px 5px', border: 'none', background: weather === w.label ? C.face : 'transparent', boxShadow: weather === w.label ? SUNKEN : 'none', borderRadius: '4px', outline: weather === w.label ? `2px solid ${C.frame}` : 'none', lineHeight: 1, cursor: 'pointer' }}>{w.emoji}</Btn>
               ))}
             </div>
           </div>
@@ -341,14 +377,14 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '8px 12px', background: 'rgba(255,245,248,0.6)', borderTop: `1px solid ${C.grd}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '8px 12px', background: 'rgba(255,245,248,0.6)', borderTop: `1px solid ${C.grd}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' ,borderBottomLeftRadius: "10px", borderBottomRightRadius: "10px"}}>
           <div>
             <div style={{ fontFamily: FONT, fontSize: 7, color: lastSaved ? C.ok : C.grd }}>{lastSaved ? `LAST SAVED ${lastSaved}` : 'NOT SAVED YET'}</div>
             {isDirty && !loading && <div style={{ fontFamily: FONT, fontSize: 6, color: '#B8860B', marginTop: 2 }}>UNSAVED CHANGES</div>}
           </div>
-          <button onClick={handleSaveClick} disabled={saving || loading} style={{ fontFamily: FONT, fontSize: SIZE.xs, color: saving ? C.mut : C.ok, background: C.face, border: 'none', boxShadow: (saving || loading) ? SUNKEN : RAISED, padding: '4px 18px', cursor: (saving || loading) ? 'default' : 'pointer', opacity: (saving || loading) ? 0.7 : 1 }}>
+          <Btn onClick={handleSaveClick} disabled={saving || loading} style={{ fontFamily: FONT, fontSize: SIZE.xs, color: saving ? C.mut : C.ok, background: C.face, border: 'none', boxShadow: (saving || loading) ? SUNKEN : RAISED, padding: '5px 22px', opacity: (saving || loading) ? 0.7 : 1, borderRadius: '6px', cursor: saving || loading ? 'default' : 'pointer' }}>
             {saving ? 'SAVING…' : savedEntry !== null ? '► UPDATE' : '► SAVE'}
-          </button>
+          </Btn>
         </div>
       </>)}
 
@@ -359,7 +395,7 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
           {/* Date context */}
           <div style={{ textAlign: 'center', marginBottom: 10, fontFamily: FONT, fontSize: SIZE.xs, color: C.frame }}>
             {dayName.toUpperCase()}, {monthDay} {year}
-            {savedHabits !== null && <span style={{ marginLeft: 8, background: C.ok, color: '#fff', padding: '0 5px', fontSize: 7 }}>SAVED</span>}
+            {savedHabits !== null && <span style={{ marginLeft: 8, background: C.ok, color: '#fff', padding: '4px 5px', fontSize: 7, borderRadius: '5px' }}>SAVED</span>}
           </div>
 
           {/* Water intake */}
@@ -368,7 +404,7 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
               {Array.from({ length: 8 }, (_, i) => (
                 <button key={i}
                   onClick={() => hf('water_glasses', i < habits.water_glasses ? i : i + 1)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '1px 2px', fontSize: 19, lineHeight: 1, opacity: i < habits.water_glasses ? 1 : 0.18, filter: i < habits.water_glasses ? 'none' : 'grayscale(1)', transition: 'opacity 0.12s' }}>
+                  style={{ background: 'none', border: 'none', padding: '1px 2px', fontSize: 19, lineHeight: 1, opacity: i < habits.water_glasses ? 1 : 0.18, filter: i < habits.water_glasses ? 'none' : 'grayscale(1)', transition: 'opacity 0.12s' }}>
                   💧
                 </button>
               ))}
@@ -391,17 +427,17 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
             <div style={{ display: 'flex', gap: 4, marginBottom: 6, alignItems: 'center' }}>
               <input value={todoInput} onChange={e => setTodoInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTodo()} placeholder="add task…"
                 style={{ fontFamily: FONT, fontSize: 7, flex: 1, background: C.inp, border: `1px solid ${C.grd}`, boxShadow: SUNKEN, padding: '4px 6px', color: C.txt, outline: 'none' }} />
-              <button onClick={addTodo} style={{ fontFamily: FONT, fontSize: SIZE.sm, color: C.ok, background: C.face, border: 'none', boxShadow: RAISED, padding: '4px 10px', cursor: 'pointer' }}>+</button>
+              <Btn onClick={addTodo} style={{ borderRadius: '6px', fontFamily: FONT, fontSize: SIZE.sm, color: C.ok, background: C.face, border: 'none', boxShadow: RAISED, padding: '4px 12px', cursor: 'pointer' }}>+</Btn>
             </div>
             {habits.todos.length === 0
               ? <div style={{ fontFamily: FONT, fontSize: 7, color: C.mut }}>no tasks yet</div>
               : habits.todos.map((t, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-                  <div onClick={() => toggleTodo(i)} style={{ width: 12, height: 12, flexShrink: 0, border: `2px solid ${C.frame}`, background: t.done ? C.frame : C.inp, boxShadow: t.done ? SUNKEN : RAISED, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div onClick={() => toggleTodo(i)} style={{ width: 12, height: 12, flexShrink: 0, border: `2px solid ${C.frame}`, background: t.done ? C.frame : C.inp, boxShadow: t.done ? SUNKEN : RAISED, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {t.done && <span style={{ color: '#fff', fontSize: 7, lineHeight: 1 }}>✓</span>}
                   </div>
                   <span style={{ fontFamily: FONT, fontSize: 7, flex: 1, color: C.txt, lineHeight: 1.7, textDecoration: t.done ? 'line-through' : 'none', opacity: t.done ? 0.42 : 1 }}>{t.text}</span>
-                  <button onClick={() => removeTodo(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 8, color: C.mut, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>✕</button>
+                  <Btn onClick={() => removeTodo(i)} style={{ background: 'none', border: 'none', fontSize: 9, color: C.mut, padding: '1px 4px', lineHeight: 1, flexShrink: 0, cursor: 'pointer' }}>✕</Btn>
                 </div>
               ))
             }
@@ -412,7 +448,7 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
             <div style={{ display: 'flex', gap: 4, marginBottom: 6, alignItems: 'center' }}>
               <input value={ideaInput} onChange={e => setIdeaInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addIdea()} placeholder="add idea…"
                 style={{ fontFamily: FONT, fontSize: 7, flex: 1, background: C.inp, border: `1px solid ${C.grd}`, boxShadow: SUNKEN, padding: '4px 6px', color: C.txt, outline: 'none' }} />
-              <button onClick={addIdea} style={{ fontFamily: FONT, fontSize: SIZE.sm, color: C.ok, background: C.face, border: 'none', boxShadow: RAISED, padding: '4px 10px', cursor: 'pointer' }}>+</button>
+              <Btn onClick={addIdea} style={{ borderRadius: '6px', fontFamily: FONT, fontSize: SIZE.sm, color: C.ok, background: C.face, border: 'none', boxShadow: RAISED, padding: '4px 12px', cursor: 'pointer' }}>+</Btn>
             </div>
             {habits.project_ideas.length === 0
               ? <div style={{ fontFamily: FONT, fontSize: 7, color: C.mut }}>no ideas yet</div>
@@ -420,7 +456,7 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
                   <span style={{ fontSize: 8, color: C.face, flexShrink: 0 }}>♥</span>
                   <span style={{ fontFamily: FONT, fontSize: 7, flex: 1, color: C.txt, lineHeight: 1.7 }}>{idea}</span>
-                  <button onClick={() => removeIdea(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 8, color: C.mut, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>✕</button>
+                  <Btn onClick={() => removeIdea(i)} style={{ background: 'none', border: 'none', fontSize: 9, color: C.mut, padding: '1px 4px', lineHeight: 1, flexShrink: 0, cursor: 'pointer' }}>✕</Btn>
                 </div>
               ))
             }
@@ -429,13 +465,13 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
         </div>
 
         {/* Habits footer */}
-        <div style={{ padding: '8px 12px', background: 'rgba(255,245,248,0.6)', borderTop: `1px solid ${C.grd}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ borderBottomLeftRadius: "10px", borderBottomRightRadius: "10px", padding: '8px 12px', background: 'rgba(255,245,248,0.6)', borderTop: `1px solid ${C.grd}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontFamily: FONT, fontSize: 7, color: habitLastSaved ? C.ok : C.grd }}>
             {habitLastSaved ? `LAST SAVED ${habitLastSaved}` : 'NOT SAVED YET'}
           </div>
-          <button onClick={doSaveHabits} disabled={savingHabits} style={{ fontFamily: FONT, fontSize: SIZE.xs, color: savingHabits ? C.mut : C.ok, background: C.face, border: 'none', boxShadow: savingHabits ? SUNKEN : RAISED, padding: '4px 18px', cursor: savingHabits ? 'default' : 'pointer', opacity: savingHabits ? 0.7 : 1 }}>
+          <Btn onClick={doSaveHabits} disabled={savingHabits} style={{ borderRadius: '6px', fontFamily: FONT, fontSize: SIZE.xs, color: savingHabits ? C.mut : C.ok, background: C.face, border: 'none', boxShadow: savingHabits ? SUNKEN : RAISED, padding: '5px 22px', opacity: savingHabits ? 0.7 : 1, cursor: savingHabits ? 'default' : 'pointer' }}>
             {savingHabits ? 'SAVING…' : savedHabits !== null ? '► UPDATE' : '► SAVE'}
-          </button>
+          </Btn>
         </div>
       </>)}
 

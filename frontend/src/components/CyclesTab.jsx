@@ -80,8 +80,14 @@ export default function CyclesTab({ refreshKey, activeCycle, notify, onCycleActi
     const start = new Date(activeCycle.start_date)
     const end   = new Date(endDate)
     const diff  = Math.round((end - start) / 86_400_000)
-    if (diff < 15) { notify('err', 'END DATE TOO EARLY — CHECK DATE'); return }
-    if (diff > 60) { notify('err', 'CYCLE > 60 DAYS — CHECK DATE'); return }
+
+// BEFORE
+if (diff < 15) { notify('err', 'END DATE TOO EARLY — CHECK DATE'); return }
+if (diff > 60) { notify('err', 'CYCLE > 60 DAYS — CHECK DATE'); return }
+
+// AFTER
+if (diff <= 25) { notify('err', 'CYCLE TOO SHORT — MIN 26 DAYS'); return }
+if (diff >= 40) { notify('err', 'CYCLE TOO LONG — MAX 39 DAYS'); return }
 
     setCompleting(true)
     try {
@@ -107,20 +113,21 @@ export default function CyclesTab({ refreshKey, activeCycle, notify, onCycleActi
       {/* ── Active cycle panel ─────────────────────────────────────── */}
       {activeCycle ? (
         <div style={{
-          border: `2px solid ${C.frame}`, background: '#FFE8F2',
-          padding: '10px 12px', marginBottom: 12,
+          border: `2px solid ${C.grd}`, background: '#FFE8F2',
+          padding: '10px 12px', marginBottom: 12, borderRadius: "5px",
         }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
             fontFamily: FONT, fontSize: SIZE.md, fontWeight: 'bold', color: '#7A1A38',
             letterSpacing: '.08em',
           }}>
-            <i className="ti ti-circle-dot" style={{ fontSize: SIZE.md, color: C.frame }} aria-hidden="true" />
+            <i className="ti ti-circle-dot" style={{ fontSize: SIZE.md, color: C.grd }} aria-hidden="true" />
             ACTIVE CYCLE
             <span style={{
               fontFamily: FONT, fontSize: SIZE.xs,
               background: C.frame, color: '#FFFFFF',
               padding: '1px 8px', letterSpacing: '.06em',
+              borderRadius: "5px",
             }}>
               CYCLE #{activeCycle.cycle_number}
             </span>
@@ -132,7 +139,7 @@ export default function CyclesTab({ refreshKey, activeCycle, notify, onCycleActi
               ['DAYS ELAPSED',  elapsedDays + 'd'],
               ['STATUS',        'IN PROGRESS'],
             ].map(([l, v]) => (
-              <div key={l} style={{ background: '#FFD6E5', padding: '5px 8px', border: `1px solid ${C.grd}` }}>
+              <div key={l} style={{ background: '#FFD6E5', padding: '5px 8px', border: `1px solid ${C.grd}`, borderRadius: "5px" }}>
                 <div style={{ fontFamily: FONT, fontSize: SIZE.xs, color: '#9A4060', letterSpacing: '.04em' }}>{l}</div>
                 <div style={{ fontFamily: FONT, fontSize: SIZE.lg, color: C.txt, fontWeight: 'bold', marginTop: 1 }}>{v}</div>
               </div>
@@ -174,7 +181,9 @@ export default function CyclesTab({ refreshKey, activeCycle, notify, onCycleActi
               </PixelBtn>
             </div>
           </div>
-
+          <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut, marginTop: 3 }}>
+            VALID RANGE: 26 – 39 DAYS FROM CYCLE START
+          </div>
           {/* ── Mark cycle complete ───────────────────────────────── */}
           <div style={{ borderTop: `1px solid ${C.grd}`, paddingTop: 10 }}>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
@@ -194,7 +203,7 @@ export default function CyclesTab({ refreshKey, activeCycle, notify, onCycleActi
       ) : (
         /* No active cycle — show Start button */
         <div style={{
-          border: `1px dashed ${C.frame}`, padding: '12px',
+          border: `1px dashed ${C.grd}`, padding: '12px',
           marginBottom: 12, textAlign: 'center',
         }}>
           <div style={{ fontFamily: FONT, fontSize: SIZE.md, color: C.mut, marginBottom: 8 }}>
@@ -244,7 +253,7 @@ export default function CyclesTab({ refreshKey, activeCycle, notify, onCycleActi
       <PhaseProgress completed={completed.length} />
 
       {/* ── Cycles table ──────────────────────────────────────────── */}
-      <div style={{ boxShadow: SUNKEN, border: `1px solid ${C.grd}`, overflowX: 'auto' }}>
+      <div style={{ boxShadow: SUNKEN, border: `1px solid ${C.grd}`, overflowX: 'auto',borderRadius: "5px" }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
