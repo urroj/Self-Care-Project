@@ -272,7 +272,7 @@ if (diff >= 40) { notify('err', 'CYCLE TOO LONG — MAX 39 DAYS'); return }
                       <td style={TD}>{c.cycle_number}</td>
                       <td style={TD}>{c.start_date}</td>
                       <td style={TD}>{c.end_date || '—'}</td>
-                      <td style={{ ...TD, color: C.sage, fontWeight: 'bold' }}>
+                      <td style={{ ...TD, color: C.accent, fontWeight: 'bold' }}>
                         {c.cycle_length ? `${c.cycle_length}d` : 'ongoing'}
                       </td>
                       <td style={TD}>{c.period_duration ? `${c.period_duration}d` : '—'}</td>

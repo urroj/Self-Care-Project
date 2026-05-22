@@ -32,15 +32,17 @@ function JTabBtn({ label, active, onClick }) {
       onMouseEnter={() => !active && setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        flex: 1, fontFamily: FONT, fontSize: SIZE.xs, letterSpacing: '.06em',
-        color:      active ? C.txt : hov ? C.txt : C.barT,
-        background: active ? C.win : hov ? 'rgba(255,255,255,0.18)' : 'transparent',
-        border: 'none',
-        borderBottom: active ? `2px solid ${C.win}` : 'none',
-        padding: '7px 0',
+        fontFamily: FONT, fontSize: SIZE.sm, letterSpacing: '.06em',
+        color:      active ? C.txt : hov ? C.txt : C.mut,
+        background: active ? C.win : hov ? `${C.desk}dd` : C.desk,
+        border: `1px solid ${C.frame}`,
+        borderTopLeftRadius: '5px', borderTopRightRadius: '5px',
+        borderBottom: active ? `2px solid ${C.win}` : `1px solid ${C.frame}`,
+        padding: '12px 14px',
+        minHeight: 44, minWidth: 44,
+        boxShadow: active ? `inset 1px 1px 0 ${C.hi}` : `inset -1px -1px 0 rgba(90,0,32,0.22)`,
         marginBottom: active ? -2 : 0,
         position: 'relative', zIndex: active ? 2 : 1,
-        borderTopLeftRadius: '5px', borderTopRightRadius: '5px',
         transition: 'color 0.12s, background 0.12s',
         cursor: 'pointer',
       }}
@@ -298,7 +300,7 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', background: C.face, borderBottom: `2px solid ${C.frame}` }}>
+      <div style={{ display: 'flex', background: C.face, borderBottom: `2px solid ${C.frame}`, padding: '5px 8px 0', gap: 3, alignItems: 'flex-end' }}>
         {[{ id: 'journal', label: 'JOURNAL' }, { id: 'habits', label: 'HABITS' }].map(t => (
           <JTabBtn key={t.id} label={t.label} active={activeTab === t.id} onClick={() => setActiveTab(t.id)} />
         ))}
@@ -382,7 +384,7 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
             <div style={{ fontFamily: FONT, fontSize: 7, color: lastSaved ? C.ok : C.grd }}>{lastSaved ? `LAST SAVED ${lastSaved}` : 'NOT SAVED YET'}</div>
             {isDirty && !loading && <div style={{ fontFamily: FONT, fontSize: 6, color: '#B8860B', marginTop: 2 }}>UNSAVED CHANGES</div>}
           </div>
-          <Btn onClick={handleSaveClick} disabled={saving || loading} style={{ fontFamily: FONT, fontSize: SIZE.xs, color: saving ? C.mut : C.ok, background: C.face, border: 'none', boxShadow: (saving || loading) ? SUNKEN : RAISED, padding: '5px 22px', opacity: (saving || loading) ? 0.7 : 1, borderRadius: '6px', cursor: saving || loading ? 'default' : 'pointer' }}>
+          <Btn onClick={handleSaveClick} disabled={saving || loading} style={{ fontFamily: FONT, fontSize: SIZE.md, color: saving ? C.mut : C.ok, background: C.face, border: 'none', boxShadow: (saving || loading) ? SUNKEN : RAISED, padding: '12px 18px', minWidth: 120, minHeight: 30, opacity: (saving || loading) ? 0.7 : 1, borderRadius: '6px', cursor: saving || loading ? 'default' : 'pointer' }}>
             {saving ? 'SAVING…' : savedEntry !== null ? '► UPDATE' : '► SAVE'}
           </Btn>
         </div>
@@ -427,7 +429,7 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
             <div style={{ display: 'flex', gap: 4, marginBottom: 6, alignItems: 'center' }}>
               <input value={todoInput} onChange={e => setTodoInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTodo()} placeholder="add task…"
                 style={{ fontFamily: FONT, fontSize: 7, flex: 1, background: C.inp, border: `1px solid ${C.grd}`, boxShadow: SUNKEN, padding: '4px 6px', color: C.txt, outline: 'none' }} />
-              <Btn onClick={addTodo} style={{ borderRadius: '6px', fontFamily: FONT, fontSize: SIZE.sm, color: C.ok, background: C.face, border: 'none', boxShadow: RAISED, padding: '4px 12px', cursor: 'pointer' }}>+</Btn>
+              <Btn onClick={addTodo} style={{ borderRadius: '6px', fontFamily: FONT, fontSize: SIZE.xs, color: C.ok, background: C.face, border: 'none', boxShadow: RAISED, padding: '6px 14px', minHeight: 32, cursor: 'pointer' }}>+</Btn>
             </div>
             {habits.todos.length === 0
               ? <div style={{ fontFamily: FONT, fontSize: 7, color: C.mut }}>no tasks yet</div>
@@ -448,7 +450,7 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
             <div style={{ display: 'flex', gap: 4, marginBottom: 6, alignItems: 'center' }}>
               <input value={ideaInput} onChange={e => setIdeaInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addIdea()} placeholder="add idea…"
                 style={{ fontFamily: FONT, fontSize: 7, flex: 1, background: C.inp, border: `1px solid ${C.grd}`, boxShadow: SUNKEN, padding: '4px 6px', color: C.txt, outline: 'none' }} />
-              <Btn onClick={addIdea} style={{ borderRadius: '6px', fontFamily: FONT, fontSize: SIZE.sm, color: C.ok, background: C.face, border: 'none', boxShadow: RAISED, padding: '4px 12px', cursor: 'pointer' }}>+</Btn>
+              <Btn onClick={addIdea} style={{ borderRadius: '6px', fontFamily: FONT, fontSize: SIZE.xs, color: C.ok, background: C.face, border: 'none', boxShadow: RAISED, padding: '6px 14px', minHeight: 32, cursor: 'pointer' }}>+</Btn>
             </div>
             {habits.project_ideas.length === 0
               ? <div style={{ fontFamily: FONT, fontSize: 7, color: C.mut }}>no ideas yet</div>
@@ -469,7 +471,7 @@ export default function JournalWindow({ pos, zIndex, onFocus, onTitleDown, embed
           <div style={{ fontFamily: FONT, fontSize: 7, color: habitLastSaved ? C.ok : C.grd }}>
             {habitLastSaved ? `LAST SAVED ${habitLastSaved}` : 'NOT SAVED YET'}
           </div>
-          <Btn onClick={doSaveHabits} disabled={savingHabits} style={{ borderRadius: '6px', fontFamily: FONT, fontSize: SIZE.xs, color: savingHabits ? C.mut : C.ok, background: C.face, border: 'none', boxShadow: savingHabits ? SUNKEN : RAISED, padding: '5px 22px', opacity: savingHabits ? 0.7 : 1, cursor: savingHabits ? 'default' : 'pointer' }}>
+          <Btn onClick={doSaveHabits} disabled={savingHabits} style={{ borderRadius: '6px', fontFamily: FONT, fontSize: SIZE.md, color: savingHabits ? C.mut : C.ok, background: C.face, border: 'none', boxShadow: savingHabits ? SUNKEN : RAISED, padding: '12px 18px', minWidth: 140, minHeight: 44, opacity: savingHabits ? 0.7 : 1, cursor: savingHabits ? 'default' : 'pointer' }}>
             {savingHabits ? 'SAVING…' : savedHabits !== null ? '► UPDATE' : '► SAVE'}
           </Btn>
         </div>

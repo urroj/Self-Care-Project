@@ -5,12 +5,13 @@ import { C, FONT, RAISED, SUNKEN, SIZE } from '../theme.js'
 
 // ── Typography ────────────────────────────────────────────────────────────────
 
-export function Label({ children, style }) {
+export function Label({ children, htmlFor, style }) {
   return (
-    <div style={{ fontFamily: FONT, fontSize: SIZE.sm, color: C.mut,
+    <label htmlFor={htmlFor} style={{ display: 'block',
+      fontFamily: FONT, fontSize: SIZE.sm, color: C.mut,
       marginBottom: 2, letterSpacing: '.04em', ...style }}>
       {children}
-    </div>
+    </label>
   )
 }
 
@@ -60,7 +61,7 @@ export function CheckRow({ label, checked, onChange, style }) {
     }}>
       <input type="checkbox" checked={checked}
         onChange={e => onChange(e.target.checked)}
-        style={{ cursor: 'pointer', accentColor: C.sage }} />
+        style={{ cursor: 'pointer', accentColor: C.accent }} />
       {label}
     </label>
   )
@@ -75,7 +76,7 @@ export function RadioRow({ name, value, current, onChange, label }) {
     }}>
       <input type="radio" name={name} value={value}
         checked={current === value} onChange={() => onChange(value)}
-        style={{ accentColor: C.sage }} />
+        style={{ accentColor: C.accent }} />
       {label}
     </label>
   )
@@ -118,11 +119,12 @@ export function PixelBtn({ children, onClick, color, style, disabled, onMouseDow
       disabled={disabled}
       title={title}
       style={{
-        fontFamily: FONT, fontSize: SIZE.md, letterSpacing: '.05em',
+        fontFamily: FONT, fontSize: SIZE.xs, letterSpacing: '.05em',
         color: disabled ? C.mut : (color || C.txt),
         background: C.face, border: 'none',
         boxShadow: disabled ? SUNKEN : act ? SUNKEN : RAISED,
-        padding: '4px 16px', cursor: disabled ? 'default' : 'pointer',
+        padding: '6px 14px', cursor: disabled ? 'default' : 'pointer',
+        minHeight: 32,
         borderRadius: '6px',
         opacity: disabled ? 0.6 : 1,
         transform: !disabled && act ? 'scale(0.95) translateY(1px)' : !disabled && hov ? 'scale(1.04)' : 'scale(1)',
@@ -181,15 +183,18 @@ export function PhaseTag({ phase }) {
 
 export function Notification({ type, msg }) {
   return (
-    <div style={{
-      position: 'absolute', top: 72, right: 12, zIndex: 200,
-      background: type === 'ok' ? '#C8E8D4' : '#FFB8C8',
-      border: `2px solid ${type === 'ok' ? C.ok : C.err}`,
-      boxShadow: `2px 2px 0 ${C.sh}`,
-      padding: '5px 14px',
-      fontFamily: FONT, fontSize: SIZE.md, letterSpacing: '.05em',
-      color: type === 'ok' ? C.ok : C.err,
-    }}>
+    <div
+      role="status"
+      aria-live="polite"
+      style={{
+        position: 'absolute', top: 72, right: 12, zIndex: 200,
+        background: type === 'ok' ? '#C8E8D4' : '#FFB8C8',
+        border: `2px solid ${type === 'ok' ? C.ok : C.err}`,
+        boxShadow: `2px 2px 0 ${C.sh}`,
+        padding: '5px 14px',
+        fontFamily: FONT, fontSize: SIZE.md, letterSpacing: '.05em',
+        color: type === 'ok' ? '#1A4A30' : '#3A0018',
+      }}>
       {type === 'ok' ? '✓ ' : '✗ '}{msg}
     </div>
   )
@@ -231,7 +236,7 @@ export function PhaseProgress({ completed }) {
     pct   = Math.round(completed / 3 * 100)
     label = `${3 - completed} MORE CYCLE${3 - completed !== 1 ? 'S' : ''} TO BAYESIAN`
     ratio = `${completed} / 3`
-    color = C.sage
+    color = C.accent
   } else if (completed < 8) {
     pct   = Math.round(completed / 8 * 100)
     label = `${8 - completed} MORE CYCLE${8 - completed !== 1 ? 'S' : ''} TO LSTM`

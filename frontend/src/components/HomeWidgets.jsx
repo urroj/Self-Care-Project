@@ -99,7 +99,7 @@ function CycleWidget({ activeCycle, status, animDelay = 0 }) {
             </div>
             <WDivider />
             <WRow label="STARTED"     value={String(activeCycle.start_date).slice(0, 10)} />
-            <WRow label="CURRENT DAY" value={day ? `DAY ${day}` : '—'} valueColor={C.sage} />
+            <WRow label="CURRENT DAY" value={day ? `DAY ${day}` : '—'} valueColor={C.accent} />
             <WRow label="PHASE"       value={phase ? phase.label : '—'} valueColor={phase ? phase.color : C.mut} />
             <WDivider />
             <WRow label="NEXT PERIOD" value={nextPeriod || 'calculating…'} valueColor={C.frame} />

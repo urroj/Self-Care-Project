@@ -13,7 +13,7 @@ export const C = {
   sh:    '#5A0020',   // very dark maroon     — bevel shadow edge
   txt:   '#3A0018',   // near-black maroon    — primary text
   mut:   '#9A4060',   // muted rose           — secondary / label text
-  sage:  '#C4506A',   // deep rose            — accent (replaces sage green)
+  accent:'#C4506A',   // deep rose            — accent (was misnamed C.sage)
   inp:   '#FFF5F8',   // very light pink      — input background
   ok:    '#5A8E72',   // sage green           — success (kept green for clarity)
   err:   '#7A1A38',   // dark maroon          — error states

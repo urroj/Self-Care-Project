@@ -327,8 +327,8 @@ function AnimatedWindow({ open, dockRef, children, style, onMouseDown }) {
   const isSmall = phase === 'entering' || phase === 'closing'
   const transition =
     phase === 'entering' ? 'none' :
-    phase === 'open'     ? 'transform 0.44s cubic-bezier(0.34,1.56,0.64,1), opacity 0.34s ease' :
-    phase === 'closing'  ? 'transform 0.26s cubic-bezier(0.4,0,1,1), opacity 0.20s ease' : 'none'
+    phase === 'open'     ? 'transform 0.36s cubic-bezier(0.4,0,0.2,1), opacity 0.30s ease' :
+    phase === 'closing'  ? 'transform 0.24s cubic-bezier(0.4,0,1,1), opacity 0.18s ease' : 'none'
 
   return (
     <div
@@ -380,7 +380,8 @@ function TabBtn({ label, active, onClick }) {
         border: `1px solid ${C.frame}`,
         borderTopLeftRadius: '5px', borderTopRightRadius: '5px',
         borderBottom: active ? `2px solid ${C.win}` : `1px solid ${C.frame}`,
-        padding: '5px 12px 6px',
+        padding: '12px 14px',
+        minHeight: 44, minWidth: 44,
         boxShadow: active ? `inset 1px 1px 0 ${C.hi}` : `inset -1px -1px 0 rgba(90,0,32,0.22)`,
         marginBottom: active ? -2 : 0,
         position: 'relative', zIndex: active ? 2 : 1,
@@ -415,12 +416,12 @@ function StatusBar({ status }) {
       padding: '2px 8px', display: 'flex', gap: 16, alignItems: 'center',
       borderBottomLeftRadius: "10px", borderBottomRightRadius: "10px",
     }}>
-      <span style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut }}>PHASE: {phase.toUpperCase()}</span>
-      <span style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut }}>CYCLES: {n} / 8</span>
-      <span style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut }}>NEXT: {nextPeriod}</span>
+      <span style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.txt }}>PHASE: {phase.toUpperCase()}</span>
+      <span style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.txt }}>CYCLES: {n} / 8</span>
+      <span style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.txt }}>NEXT: {nextPeriod}</span>
       <span style={{
         fontFamily: FONT, fontSize: SIZE.xs, marginLeft: 'auto',
-        color: dbOk ? '#5A8E72' : '#7A1A38',
+        color: dbOk ? '#1A4A30' : '#3A0018',
       }}>
         {dbOk ? '◉ DB: CONNECTED' : '○ DB: OFFLINE'}
       </span>
@@ -573,22 +574,22 @@ export default function App() {
 
             {notif && <Notification type={notif.type} msg={notif.msg} />}
 
-            <div style={{ display: tab === 'log'      ? '' : 'none' }}>
+            {tab === 'log' && (
               <LogTab activeCycle={activeCycle} notify={notify} onSaved={refresh} />
-            </div>
-            <div style={{ display: tab === 'cycles'   ? '' : 'none' }}>
+            )}
+            {tab === 'cycles' && (
               <CyclesTab refreshKey={refreshKey} activeCycle={activeCycle}
                 notify={notify} onCycleAction={refresh} />
-            </div>
-            <div style={{ display: tab === 'logs'     ? '' : 'none' }}>
+            )}
+            {tab === 'logs' && (
               <LogsTab refreshKey={refreshKey} />
-            </div>
-            <div style={{ display: tab === 'results'  ? '' : 'none' }}>
+            )}
+            {tab === 'results' && (
               <ResultsTab refreshKey={refreshKey} notify={notify} />
-            </div>
-            <div style={{ display: tab === 'insights' ? '' : 'none' }}>
+            )}
+            {tab === 'insights' && (
               <InsightsTab refreshKey={refreshKey} />
-            </div>
+            )}
 
             <StatusBar status={status} />
           </AnimatedWindow>

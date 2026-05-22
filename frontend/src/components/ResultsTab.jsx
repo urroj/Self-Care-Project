@@ -1,6 +1,6 @@
 // components/ResultsTab.jsx — stored model_runs + run-prediction button
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 import { api } from '../api.js'
 import { C, FONT, RAISED, SUNKEN ,SIZE} from '../theme.js'
 import { PhaseTag, PixelBtn, SectionLabel } from './Shared.jsx'
@@ -11,7 +11,7 @@ function Field({ label, value, accent }) {
       <div style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut, letterSpacing: '.04em' }}>{label}</div>
       <div style={{
         fontFamily: FONT, fontSize: SIZE.lg,
-        color: accent ? C.sage : C.txt,
+        color: accent ? C.accent : C.txt,
         fontWeight: accent ? 'bold' : 'normal',
         marginTop: 1,
       }}>
@@ -21,7 +21,7 @@ function Field({ label, value, accent }) {
   )
 }
 
-function RunCard({ run, index, total }) {
+const RunCard = memo(function RunCard({ run, index, total }) {
   const p   = run.predictions || {}
   const lo  = p.ci_lower_80 ?? p.ci_lower ?? '?'
   const hi  = p.ci_upper_80 ?? p.ci_upper ?? '?'
@@ -66,7 +66,7 @@ function RunCard({ run, index, total }) {
       </div>
     </div>
   )
-}
+})
 // ── Model explanation component ───────────────────────────────────────────────
 
 const PHASE_INFO = {
@@ -89,17 +89,22 @@ const PHASE_INFO = {
 
 function InfoBlock({ label, children }) {
   return (
-    <div style={{ marginBottom: 10 }}>
+    <div style={{
+      marginBottom: 10,
+      background: C.r2,
+      border: `1px solid ${C.grd}`,
+      borderRadius: 5,
+      padding: '8px 10px',
+    }}>
       <div style={{
         fontFamily: FONT, fontSize: SIZE.xs, color: C.frame,
-        letterSpacing: '.06em', marginBottom: 4,
-        borderLeft: `3px solid ${C.frame}`, paddingLeft: 6,
+        letterSpacing: '.06em', marginBottom: 4, fontWeight: 'bold',
       }}>
         {label}
       </div>
       <div style={{
         fontFamily: FONT, fontSize: 7, color: C.txt,
-        lineHeight: 2, paddingLeft: 10,
+        lineHeight: 2,
       }}>
         {children}
       </div>
@@ -245,7 +250,7 @@ export default function ResultsTab({ refreshKey, notify }) {
             borderRadius: "5px"
           }}
         />
-        <PixelBtn onClick={handleRunPredict} disabled={running} color={C.sage}>
+        <PixelBtn onClick={handleRunPredict} disabled={running} color={C.accent}>
           {running ? 'RUNNING…' : '▶ RUN'}
         </PixelBtn>
         <span style={{ fontFamily: FONT, fontSize: SIZE.md, color: C.mut, marginLeft: 'auto' }}>

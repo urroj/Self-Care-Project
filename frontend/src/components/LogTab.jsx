@@ -232,7 +232,7 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
           fontFamily: FONT, fontSize: SIZE.sm, color: C.mut,
           borderRadius: "5px"
         }}>
-          <span style={{ color: C.sage }}>●</span>
+          <span style={{ color: C.accent }}>●</span>
           Cycle #{activeCycle.cycle_number} · started {activeCycle.start_date}
           {existingLog && (
             <span style={{
@@ -255,12 +255,12 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
         {/* ── Left column ─────────────────────────────────────────── */}
         <div>
           <GroupBox title="DATE &amp; FLOW" style={{ borderRadius: "5px" }}>
-            <Label>log date</Label>
-            <Inp type="date" lang="en-CA" value={form.log_date}
+            <Label htmlFor="log_date">log date</Label>
+            <Inp id="log_date" type="date" lang="en-CA" value={form.log_date}
             onChange={e => f('log_date', e.target.value.replace(/\//g, '-'))}
               style={{ marginBottom: 6 }} />
-            <Label>flow intensity</Label>
-            <Sel value={form.flow_intensity}
+            <Label htmlFor="flow_intensity">flow intensity</Label>
+            <Sel id="flow_intensity" value={form.flow_intensity}
               onChange={e => f('flow_intensity', e.target.value)}>
               <option value="">— select —</option>
               {['0 — none','1 — spotting','2 — light','3 — medium','4 — heavy','5 — very heavy']
@@ -269,7 +269,10 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
           </GroupBox>
 
           <GroupBox title="CERVICAL MUCUS" style={{ borderRadius: "5px" }}>
-            <Sel value={form.mucus_type}
+            <Label htmlFor="mucus_type" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+              cervical mucus type
+            </Label>
+            <Sel id="mucus_type" value={form.mucus_type}
               onChange={e => f('mucus_type', e.target.value)}>
               <option value="">— select —</option>
               {['dry','sticky','creamy','watery','egg_white','spotting']
@@ -279,35 +282,45 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
 
           <GroupBox title="BIOMETRICS" cols="1fr 1fr" style={{ borderRadius: "5px" }}>
             <div>
-              <Label>weight (kg)</Label>
-              <Inp type="number" step="0.1" placeholder="65.0"
+              <Label htmlFor="weight_kg">weight (kg)</Label>
+              <Inp id="weight_kg" type="number" step="0.1" placeholder="65.0"
                 value={form.weight_kg} onChange={e => f('weight_kg', e.target.value)} />
             </div>
             <div>
-              <Label>exercise (min)</Label>
-              <Inp type="number" min="0" placeholder="0"
+              <Label htmlFor="exercise_mins">exercise (min)</Label>
+              <Inp id="exercise_mins" type="number" min="0" placeholder="0"
                 value={form.exercise_mins} onChange={e => f('exercise_mins', e.target.value)} />
             </div>
           </GroupBox>
 
           <GroupBox title="SLEEP &amp; STRESS" style={{ borderRadius: "5px" }}>
-            <Label>sleep hours</Label>
-            <Inp type="number" step="0.5" min="0" max="14" placeholder="7.5"
+            <Label htmlFor="sleep_hours">sleep hours</Label>
+            <Inp id="sleep_hours" type="number" step="0.5" min="0" max="14" placeholder="7.5"
               value={form.sleep_hours} onChange={e => f('sleep_hours', e.target.value)}
               style={{ marginBottom: 6 }} />
-            <Label>sleep quality</Label>
-            <div style={{ display: 'flex', marginBottom: 6 }}>
-              {[['1','poor'],['2','fair'],['3','good']].map(([v,l]) => (
-                <RadioRow key={v} name="sq" value={v} current={form.sleep_quality}
-                  onChange={v => f('sleep_quality', v)} label={l} />
-              ))}
+            <div role="radiogroup" aria-labelledby="sq_label">
+              <div id="sq_label" style={{ fontFamily: FONT, fontSize: SIZE.sm,
+                color: C.mut, marginBottom: 2, letterSpacing: '.04em' }}>
+                sleep quality
+              </div>
+              <div style={{ display: 'flex', marginBottom: 6 }}>
+                {[['1','poor'],['2','fair'],['3','good']].map(([v,l]) => (
+                  <RadioRow key={v} name="sq" value={v} current={form.sleep_quality}
+                    onChange={v => f('sleep_quality', v)} label={l} />
+                ))}
+              </div>
             </div>
-            <Label>stress level</Label>
-            <div style={{ display: 'flex' }}>
-              {[['1','low'],['2','moderate'],['3','high']].map(([v,l]) => (
-                <RadioRow key={v} name="sl" value={v} current={form.stress_level}
-                  onChange={v => f('stress_level', v)} label={l} />
-              ))}
+            <div role="radiogroup" aria-labelledby="sl_label">
+              <div id="sl_label" style={{ fontFamily: FONT, fontSize: SIZE.sm,
+                color: C.mut, marginBottom: 2, letterSpacing: '.04em' }}>
+                stress level
+              </div>
+              <div style={{ display: 'flex' }}>
+                {[['1','low'],['2','moderate'],['3','high']].map(([v,l]) => (
+                  <RadioRow key={v} name="sl" value={v} current={form.stress_level}
+                    onChange={v => f('stress_level', v)} label={l} />
+                ))}
+              </div>
             </div>
           </GroupBox>
         </div>
@@ -339,7 +352,7 @@ export default function LogTab({ activeCycle, notify, onSaved }) {
       }}>
         <PixelBtn onClick={handleClear} color={C.mut} >CLEAR</PixelBtn>
         <PixelBtn onClick={handleSave} color={C.ok} disabled={saving || checking}
-          style={{ minWidth: 110 }}>
+          style={{ minWidth: 140, minHeight: 44, fontSize: SIZE.md, padding: '12px 18px' }}>
           {checking ? 'CHECKING…' : saving ? 'SAVING…' : existingLog ? '▶ UPDATE LOG' : '▶ SAVE LOG'}
         </PixelBtn>
       </div>

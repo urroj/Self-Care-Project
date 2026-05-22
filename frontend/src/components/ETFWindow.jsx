@@ -155,7 +155,7 @@ function InvestmentPanel({ etf, currentPrice, currency , priceData = [] }) {
         <Btn onClick={() => setShowForm(f => !f)} style={{
           fontFamily: FONT, fontSize: SIZE.xs, color: showForm ? C.err : C.ok,
           background: C.face, border: 'none', boxShadow: RAISED,
-          padding: '3px 12px', borderRadius: '6px', cursor: 'pointer',
+          padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
         }}>
           {showForm ? '✕ CANCEL' : '+ ADD'}
         </Btn>
@@ -243,7 +243,7 @@ function InvestmentPanel({ etf, currentPrice, currency , priceData = [] }) {
               fontFamily: FONT, fontSize: SIZE.xs, color: adding ? C.mut : C.ok,
               background: C.face, border: 'none',
               boxShadow: adding ? SUNKEN : RAISED,
-              padding: '4px 18px', borderRadius: '6px', cursor: adding ? 'default' : 'pointer',
+              padding: '6px 14px', minHeight: 32, borderRadius: '6px', cursor: adding ? 'default' : 'pointer',
             }}>
               {adding ? 'FETCHING PRICE…' : '▶ SAVE'}
             </Btn>
@@ -846,7 +846,7 @@ function ForecastPanel({ etf, horizon }) {
               background: subtab === t ? C.frame : C.face,
               border: 'none',
               boxShadow:  subtab === t ? SUNKEN : RAISED,
-              padding: '2px 8px', borderRadius: '6px', cursor: 'pointer',
+              padding: '6px 14px', borderRadius: '6px',
             }}>
               {t === 'chart' ? '~ CHART' : '◈ MODEL'}
             </Btn>
@@ -857,7 +857,7 @@ function ForecastPanel({ etf, horizon }) {
             color:     running ? C.mut : C.ok,
             background: C.face, border: 'none',
             boxShadow:  running ? SUNKEN : RAISED,
-            padding: '2px 10px', borderRadius: '6px',
+            padding: '6px 14px', borderRadius: '6px',
             cursor: running ? 'default' : 'pointer',
           }}>
             {running ? '…' : forecast ? '↺ UPDATE' : '▶ RUN'}
@@ -919,12 +919,12 @@ function ForecastView({ etfs }) {
         {FC_HORIZONS.map(h => (
           <Btn key={h.key} onClick={() => setHorizon(h.key)} style={{
             fontFamily: FONT, fontSize: SIZE.xs,
-            color:      horizon === h.key ? C.barT : C.mut,
-            background: horizon === h.key ? C.frame : C.face,
+            color:      horizon === h.key ? C.frame : C.mut,
+            background: 'none',
             border: 'none',
             boxShadow:  horizon === h.key ? SUNKEN : RAISED,
-            padding: '3px 12px', borderRadius: '6px', cursor: 'pointer',
-          }}>
+            padding: '6px 14px', borderRadius: '6px'
+            }}>
             {h.label}
           </Btn>
         ))}
@@ -1004,8 +1004,15 @@ export default function ETFWindow({ onTitleDown, onFocus, embedded = false }) {
             ETF TRACKER
           </span>
         </div>
+      </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div style={{
+        display: 'flex', gap: 6, margin: 10,
+        padding: '6px 10px',
+        background: C.r1, border: `1px solid ${C.grd}`,
+        borderRadius: 6, alignItems: 'center', justifyContent: 'center',
+        FONT: FONT, fontSize: 8, color: C.mut,
+        }}>
           {/* Portfolio toggle (chart mode only) */}
           {mode === 'chart' && (
             <Btn onClick={() => setShowInv(s => !s)} style={{
@@ -1013,29 +1020,27 @@ export default function ETFWindow({ onTitleDown, onFocus, embedded = false }) {
               color: showInvestments ? C.barT : C.mut,
               background: showInvestments ? C.frame : C.face,
               border: 'none', boxShadow: showInvestments ? SUNKEN : RAISED,
-              padding: '3px 10px', borderRadius: '6px', cursor: 'pointer',
+              padding: '6px 14px', minHeight: 32, borderRadius: '6px',
             }}>
-            * PORTFOLIO
+            {showInvestments ? 'HIDE PORTFOLIO' : 'VIEW PORTFOLIO'}
             </Btn>
           )}
-
           {/* Ticker toggle (chart mode only) */}
           {mode === 'chart' && (
             <Btn onClick={() => setShowAddTicker(s => !s)} style={{
-              fontFamily: FONT, fontSize: SIZE.xs, color: showAddTicker ? C.err : C.mut,
-              background: C.face, border: 'none', boxShadow: RAISED,
-              padding: '3px 8px', borderRadius: '6px', 
+              fontFamily: FONT, fontSize: SIZE.xs, color: showAddTicker ? C.barT : C.mut,
+              background: showAddTicker ? C.frame : C.face, border: 'none', boxShadow: showAddTicker ? SUNKEN : RAISED,
+              padding: '6px 14px', minHeight: 32, borderRadius: '6px',
             }}>
-              {showAddTicker ? '✕' : '+ TICKER'}
+              {showAddTicker ? 'CLOSE TICKER' : 'ADD TICKER'}
             </Btn>
           )}
-
           {/* Mode toggle */}
           {mode === 'forecast' && (
               <Btn onClick={() => setMode('chart')} style={{
                 fontFamily: FONT, fontSize: SIZE.xs, color: C.mut,
                 background: C.face, border: 'none', boxShadow: RAISED,
-                padding: '3px 10px', borderRadius: '6px'
+                padding: '6px 14px', minHeight: 32, borderRadius: '6px',
               }}>
                 ◄ BACK
               </Btn>
@@ -1045,40 +1050,11 @@ export default function ETFWindow({ onTitleDown, onFocus, embedded = false }) {
             color:      mode === 'forecast' ? C.barT : C.mut,
             background: mode === 'forecast' ? C.frame : C.face,
             border: 'none', boxShadow: mode === 'forecast' ? SUNKEN : RAISED,
-            padding: '3px 10px', borderRadius: '6px', 
+            padding: '6px 14px', minHeight: 32, borderRadius: '6px',
           }}>
-            ~ FORECAST
+            VIEW FORECAST
           </Btn>
         </div>
-      </div>
-
-      {/* Range sub-bar (chart mode only) */}
-      {mode === 'chart' && (
-        <div style={{
-        display: 'flex', gap: 6, margin: 10,
-        padding: '6px 10px',
-        background: C.r1, border: `1px solid ${C.grd}`,
-        borderRadius: 6, alignItems: 'center',
-        FONT: FONT, fontSize: 8, color: C.mut,
-        }}>SELECT RANGE
-          {RANGES.map(r => (
-            <Btn key={r.key} onClick={() => setRange(r.key)} style={{
-              fontFamily: FONT, fontSize: SIZE.xs,
-              color: range === r.key ? C.barT : C.mut,
-              background: range === r.key ? C.frame : C.face,
-              border: 'none', boxShadow: range === r.key ? SUNKEN : RAISED,
-              padding: '3px 10px', borderRadius: '6px',
-            }}>
-              {r.label}
-            </Btn>
-          ))}
-          <Btn onClick={refresh} title="Refresh" style={{
-            fontFamily: FONT, fontSize: 13, color: C.barT,
-            background: C.frame, border: 'none',
-            padding: '2px 6px', lineHeight: 1, borderRadius: '6px',
-          }}>↻</Btn>
-        </div>
-      )}
 
       {/* Content */}
       <div style={{ padding: '10px 10px 4px', background: 'transparent', overflowY: 'auto', maxHeight: 'calc(100vh - 60px)' }}>
@@ -1086,6 +1062,26 @@ export default function ETFWindow({ onTitleDown, onFocus, embedded = false }) {
           <>
             <div style={{ fontFamily: FONT, fontSize: 6, color: C.mut, marginBottom: 8, borderLeft: `2px solid ${C.grd}`, paddingLeft: 6 }}>
               DELAYED DATA · NOT FINANCIAL ADVICE · EDUCATIONAL ONLY
+              {/* Range sub-bar (chart mode only) */}
+              {RANGES.map(r => (
+                <Btn key={r.key} onClick={() => setRange(r.key)} style={{
+                  fontFamily: FONT, fontSize: SIZE.xs,
+                  color: range === r.key ? C.frame : C.mut,
+                  border: 'none', boxShadow: range === r.key ? SUNKEN : RAISED,
+                  padding: '6px 14px', borderRadius: '6px', background: 'none',
+                  marginLeft: '6px',
+                }}>
+                  {r.label}
+                </Btn>
+              ))}
+              <Btn onClick={refresh} title="Refresh" style={{
+                fontFamily: FONT, fontSize: SIZE.xs, 
+                color: C.frame, background: 'none',
+                border: 'none', boxShadow: RAISED,
+                padding: '6px 14px', borderRadius: '6px',
+                marginLeft: '6px',
+              }}>↻</Btn>
+   
             </div>
             {showAddTicker && (
               <div style={{ marginBottom: 10, padding: '8px 10px', background: C.r1, border: `1px solid ${C.grd}`, borderRadius: 6 }}>
@@ -1120,7 +1116,7 @@ export default function ETFWindow({ onTitleDown, onFocus, embedded = false }) {
                   <Btn onClick={handleAddTicker} style={{
                     fontFamily: FONT, fontSize: SIZE.xs, color: C.ok,
                     background: C.face, border: 'none', boxShadow: RAISED,
-                    padding: '3px 14px', borderRadius: '6px', cursor: 'pointer',
+                    padding: '3px 14px', borderRadius: '6px',
                   }}>▶ ADD</Btn>
                 </div>
               </div>

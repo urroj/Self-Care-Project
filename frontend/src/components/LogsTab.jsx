@@ -138,7 +138,7 @@ export default function LogsTab({ refreshKey }) {
                 ? <EmptyRow cols={13} msg="NO LOGS YET — START LOGGING IN THE LOG TODAY TAB" />
                 : paginated.map((l, i) => (
                     <tr key={l.id || i} style={{ background: i % 2 === 0 ? C.r1 : C.r2 }}>
-                      <td style={{ ...TD, color: C.sage }}>#{l.cycle_number}</td>
+                      <td style={{ ...TD, color: C.accent }}>#{l.cycle_number}</td>
                       <td style={TD}>{l.log_date}</td>
                       <td style={{ ...TD, color: C.mut }}>d{l.day_of_cycle}</td>
                       <td style={TD}><FlowDot v={l.flow_intensity} /></td>

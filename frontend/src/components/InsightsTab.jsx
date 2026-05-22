@@ -1,6 +1,6 @@
 // components/InsightsTab.jsx — data visualisations from /api/insights
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 import {
   BarChart, Bar, ComposedChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -16,7 +16,7 @@ const TT_STYLE = {
   padding: '4px 8px', color: '#3A0018',
 }
 
-function ChartWrap({ title, subtitle, children }) {
+const ChartWrap = memo(function ChartWrap({ title, subtitle, children }) {
   return (
     <div style={{ marginBottom: 14 }}>
       <SectionLabel>{title}</SectionLabel>
@@ -35,7 +35,7 @@ function ChartWrap({ title, subtitle, children }) {
       </div>
     </div>
   )
-}
+})
 
 function InsightCard({ label, value, sub }) {
   return (
@@ -47,7 +47,7 @@ function InsightCard({ label, value, sub }) {
     }}>
       <div style={{ fontFamily: FONT, fontSize: SIZE.xs, color: C.mut, letterSpacing: '.04em' }}>{label}</div>
       <div style={{ fontFamily: FONT, fontSize: SIZE.md, color: C.txt, fontWeight: 'bold', margin: '2px 0' }}>{value}</div>
-      <div style={{ fontFamily: FONT, fontSize: SIZE.sm, color: C.sage }}>{sub}</div>
+      <div style={{ fontFamily: FONT, fontSize: SIZE.sm, color: C.accent }}>{sub}</div>
     </div>
   )
 }
@@ -166,7 +166,7 @@ export default function InsightsTab({ refreshKey }) {
                 <Tooltip contentStyle={TT_STYLE} formatter={v => [`${v} days`, 'CI width']} />
                 <Bar dataKey="width" radius={0} name="CI width">
                   {ciData.map((_, i) => (
-                    <Cell key={i} fill={C.sage} />
+                    <Cell key={i} fill={C.accent} />
                   ))}
                 </Bar>
               </BarChart>
