@@ -413,7 +413,8 @@ a `✕` button in their panel header; the two defaults cannot be removed.
 
 **Layout:** Title bar contains title, PORTFOLIO toggle, FORECAST toggle, and
 `+ TICKER` button. A second bar directly below the title (chart mode only) holds
-the range buttons (1W / 1M / 1Y) and the manual refresh icon `↻`.
+the range buttons (1W / 1M / 1Y), the manual refresh icon `↻`, and the
+PRICE / VOLATILITY view toggle.
 
 **Chart mode:** Three time ranges — 1W (1-hour bars), 1M (daily bars), 1Y (daily
 bars). Each panel shows current price, change vs prev close, range high/low,
@@ -421,6 +422,22 @@ exchange name, and data point count. Auto-refreshes every hour.
 Data is fetched via the FastAPI proxy (Yahoo Finance v8 chart API) — the browser
 never contacts Yahoo Finance directly (avoids CORS). Data is delayed 15–20
 minutes for LSE and SIX listings.
+
+**Volatility view:** Toggle the chart from `PRICE` to `VOLATILITY` to swap each
+panel's price line for a per-bar returns chart. Computed client-side from the
+same Yahoo payload — switching is instant, no re-fetch.
+
+- Solid coloured line: per-bar simple return `(P_t − P_{t-1}) / P_{t-1} × 100%`.
+- Dashed alt-coloured line: deviation from the average (`ret − mean`), so swings
+  are visible relative to the period's typical move.
+- Dashed `AVG x.xxx%` reference line at the mean return for the visible window.
+- Dotted `±1 σ` reference lines outlining the typical volatility band.
+- Footer stats replace high/low/exchange with `AVG RETURN`, `VOLATILITY` (std
+  dev of per-bar returns), `ANN. VOL` (annualised — `σ × √(252×6.5)` for hourly
+  bars, `σ × √252` for daily), and `BARS USED`.
+
+Volatility figures honour the active range — so `1W` shows hourly-bar volatility
+while `1M` / `1Y` show daily-bar volatility.
 
 **Offline fallback:** Each `ETFPanel` caches the last successful response in a
 React ref. If a subsequent fetch fails (no internet / Yahoo rate-limit), the

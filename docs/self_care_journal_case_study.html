@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Self Care Journal — Case Study</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --pink:     #f472b6;
+    --hot:      #ec4899;
+    --mauve:    #c084fc;
+    --lavender: #e9d5ff;
+    --cream:    #fdf4ff;
+    --ink:      #1a0a2e;
+    --mid:      #6b21a8;
+    --gold:     #fbbf24;
+    --green:    #34d399;
+    --teal:     #2dd4bf;
+    --red:      #f87171;
+    --card-bg:  rgba(255,255,255,0.72);
+    --border:   2px solid var(--ink);
+    --pixel-shadow: 4px 4px 0 var(--ink);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Serif Display', Georgia, serif;
+    background-color: #1a0a2e;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 20% 10%, #3b0764 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 90%, #500724 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 50% 50%, #1e0533 0%, transparent 100%),
+      repeating-linear-gradient(0deg, transparent, transparent 31px, rgba(255,255,255,0.03) 32px),
+      repeating-linear-gradient(90deg, transparent, transparent 31px, rgba(255,255,255,0.03) 32px);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HERO */
+  .hero {
+    position: relative;
+    padding: 4rem 2rem 5rem;
+    text-align: center;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(160deg, rgba(244,114,182,0.15), rgba(192,132,252,0.1), transparent 70%);
+    pointer-events: none;
+  }
+  .pixel-badge {
+    display: inline-block;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+    color: var(--pink);
+    border: 2px solid var(--pink);
+    padding: 6px 12px;
+    margin-bottom: 1.5rem;
+    animation: blink 2s step-end infinite;
+    box-shadow: 2px 2px 0 var(--hot);
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .hero h1 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: clamp(2.8rem, 7vw, 5.5rem);
+    line-height: 1.08;
+    color: #fff;
+    text-shadow: 3px 3px 0 var(--hot), 6px 6px 0 rgba(244,114,182,0.25);
+    margin-bottom: 0.6rem;
+    animation: slideUp 0.7s cubic-bezier(.22,1,.36,1) both;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--lavender);
+    text-shadow: 3px 3px 0 var(--mauve), 6px 6px 0 rgba(192,132,252,0.25);
+  }
+  @keyframes slideUp {
+    from { opacity:0; transform:translateY(30px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .hero-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 0.08em;
+    margin-bottom: 2.5rem;
+    animation: slideUp 0.7s 0.15s cubic-bezier(.22,1,.36,1) both;
+  }
+  .tag-row {
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    justify-content: center;
+    animation: slideUp 0.7s 0.3s cubic-bezier(.22,1,.36,1) both;
+  }
+  .tag {
+    font-family: 'Press Start 2P', monospace; font-size: 0.42rem;
+    padding: 5px 9px;
+    background: rgba(255,255,255,0.08);
+    border: 1.5px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.8);
+    letter-spacing: 0.05em;
+  }
+  .tag.pink  { border-color: var(--pink);  color: var(--pink);  background: rgba(244,114,182,0.1); }
+  .tag.mauve { border-color: var(--mauve); color: var(--mauve); background: rgba(192,132,252,0.1); }
+  .tag.gold  { border-color: var(--gold);  color: var(--gold);  background: rgba(251,191,36,0.1); }
+  .tag.green { border-color: var(--green); color: var(--green); background: rgba(52,211,153,0.1); }
+  .tag.teal  { border-color: var(--teal);  color: var(--teal);  background: rgba(45,212,191,0.1); }
+
+  /* LAYOUT */
+  .container {
+    max-width: 900px; margin: 0 auto;
+    padding: 0 1.5rem 6rem;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .section {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border: var(--border);
+    padding: 2.2rem 2.5rem;
+    position: relative;
+    animation: fadeIn 0.5s ease both;
+  }
+  .section + .section { border-top: none; }
+  @keyframes fadeIn {
+    from { opacity:0; transform:translateY(16px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .section:nth-child(1) { animation-delay: 0.1s; }
+  .section:nth-child(2) { animation-delay: 0.18s; }
+  .section:nth-child(3) { animation-delay: 0.26s; }
+  .section:nth-child(4) { animation-delay: 0.34s; }
+  .section:nth-child(5) { animation-delay: 0.42s; }
+  .section:nth-child(6) { animation-delay: 0.50s; }
+  .section:nth-child(7) { animation-delay: 0.58s; }
+  .section:nth-child(8) { animation-delay: 0.66s; }
+
+  .section-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.45rem; letter-spacing: 0.2em;
+    color: var(--hot); margin-bottom: 0.9rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::after {
+    content: ''; flex: 1; height: 1.5px;
+    background: linear-gradient(90deg, var(--hot), transparent);
+  }
+  .section h2 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    line-height: 1.2; color: var(--ink); margin-bottom: 1rem;
+  }
+  .section h3 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 1.35rem; color: var(--mid);
+    margin: 1.6rem 0 0.5rem;
+  }
+  .section p {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 1.05rem; line-height: 1.75; color: #2d1b45; max-width: 72ch;
+  }
+  .section p + p { margin-top: 0.9rem; }
+
+  /* PHILOSOPHY PROGRESSION */
+  .progression {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-top: 1.6rem;
+    border: var(--border);
+  }
+  @media (max-width: 640px) {
+    .progression { grid-template-columns: 1fr 1fr; }
+  }
+  .prog-step {
+    padding: 1.3rem 1rem;
+    border-right: 1.5px solid var(--ink);
+    position: relative;
+  }
+  .prog-step:last-child { border-right: none; }
+  .prog-icon {
+    font-size: 1.6rem; display: block; margin-bottom: 0.6rem;
+  }
+  .prog-num {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.38rem; color: var(--hot);
+    display: block; margin-bottom: 0.4rem;
+    letter-spacing: 0.08em;
+  }
+  .prog-step h4 {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem; font-weight: 500;
+    color: var(--ink); margin-bottom: 0.35rem;
+  }
+  .prog-step p { font-size: 0.83rem; line-height: 1.55; }
+  .prog-step.active { background: rgba(244,114,182,0.06); }
+
+  /* PROBLEM GRID */
+  .problem-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px; margin-top: 1.4rem;
+  }
+  .problem-item {
+    border: 1.5px solid var(--ink);
+    padding: 1rem;
+    background: rgba(244,114,182,0.06);
+  }
+  .problem-item::before {
+    content: attr(data-num);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.48rem; color: var(--hot);
+    display: block; margin-bottom: 0.5rem;
+  }
+  .problem-item p { font-size: 0.88rem; line-height: 1.6; }
+
+  /* PIPELINE */
+  .pipeline { display: flex; flex-direction: column; gap: 0; margin-top: 1.4rem; }
+  .pipeline-step {
+    display: grid; grid-template-columns: 120px 1fr;
+    border: 1.5px solid var(--ink); border-bottom: none; overflow: hidden;
+  }
+  .pipeline-step:last-child { border-bottom: 1.5px solid var(--ink); }
+  .pipeline-step-label {
+    background: var(--ink); color: #fff;
+    font-family: 'Press Start 2P', monospace; font-size: 0.4rem;
+    padding: 1rem 0.8rem;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; letter-spacing: 0.08em; line-height: 1.8;
+  }
+  .pipeline-step-label.pink  { background: var(--hot); }
+  .pipeline-step-label.mauve { background: var(--mauve); color: var(--ink); }
+  .pipeline-step-label.gold  { background: var(--gold);  color: var(--ink); }
+  .pipeline-step-label.green { background: var(--green); color: var(--ink); }
+  .pipeline-step-label.teal  { background: var(--teal);  color: var(--ink); }
+  .pipeline-step-body {
+    padding: 1rem 1.2rem;
+    border-left: 1.5px solid var(--ink);
+  }
+  .pipeline-step-body strong {
+    font-family: 'DM Mono', monospace; font-size: 0.78rem;
+    font-weight: 500; display: block; margin-bottom: 0.35rem; color: var(--mid);
+  }
+  .pipeline-step-body p { font-size: 0.9rem; }
+
+  /* MODEL PHASES */
+  .phases {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 12px; margin-top: 1.4rem;
+  }
+  @media (max-width: 600px) { .phases { grid-template-columns: 1fr; } }
+  .phase-card {
+    border: var(--border); padding: 1.1rem; position: relative; overflow: hidden;
+  }
+  .phase-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  }
+  .phase-card.p1::before { background: var(--red); }
+  .phase-card.p2::before { background: var(--gold); }
+  .phase-card.p3::before { background: var(--green); }
+  .phase-tag {
+    font-family: 'Press Start 2P', monospace; font-size: 0.38rem;
+    padding: 4px 7px; margin-bottom: 0.7rem; display: inline-block;
+  }
+  .phase-card.p1 .phase-tag { background: rgba(248,113,113,0.15); color: var(--red);   border: 1px solid var(--red); }
+  .phase-card.p2 .phase-tag { background: rgba(251,191,36,0.15);  color: #92400e;       border: 1px solid var(--gold); }
+  .phase-card.p3 .phase-tag { background: rgba(52,211,153,0.15);  color: #065f46;       border: 1px solid var(--green); }
+  .phase-card h4 {
+    font-family: 'DM Mono', monospace; font-size: 0.75rem;
+    font-weight: 500; margin-bottom: 0.4rem; color: var(--ink);
+  }
+  .phase-card p { font-size: 0.82rem; line-height: 1.6; }
+  .phase-ci {
+    font-family: 'Press Start 2P', monospace; font-size: 0.38rem;
+    margin-top: 0.7rem; color: var(--mid); letter-spacing: 0.05em;
+  }
+
+  /* ETF FORECAST LAYERS */
+  .etf-layers {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; margin-top: 1.4rem;
+  }
+  @media (max-width: 600px) { .etf-layers { grid-template-columns: 1fr; } }
+  .etf-layer {
+    border: 1.5px solid var(--ink);
+    padding: 1rem 1.1rem;
+    position: relative;
+  }
+  .etf-layer::before {
+    content: attr(data-layer);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.38rem; color: var(--hot);
+    display: block; margin-bottom: 0.5rem; letter-spacing: 0.06em;
+  }
+  .etf-layer h4 {
+    font-family: 'DM Mono', monospace; font-size: 0.78rem;
+    font-weight: 500; color: var(--mid); margin-bottom: 0.35rem;
+  }
+  .etf-layer p { font-size: 0.86rem; line-height: 1.6; }
+  .etf-layer.highlight { background: rgba(45,212,191,0.06); border-color: var(--teal); }
+  .etf-layer.highlight::before { color: var(--teal); }
+
+  /* WF METRICS TABLE */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px; margin-top: 1.2rem;
+  }
+  .metric-cell {
+    border: 1.5px solid var(--ink);
+    padding: 0.7rem 0.8rem;
+    background: rgba(255,255,255,0.5);
+  }
+  .metric-cell dt {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.38rem; color: var(--mid);
+    margin-bottom: 0.3rem; letter-spacing: 0.06em;
+  }
+  .metric-cell dd {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 0.88rem; line-height: 1.5; color: #2d1b45;
+  }
+
+  /* FEATURES */
+  .features {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px; margin-top: 1.4rem;
+  }
+  .feature-card {
+    border: 1.5px solid var(--ink);
+    padding: 1.1rem 1rem; background: rgba(255,255,255,0.5);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .feature-card:hover { transform: translate(-2px,-2px); box-shadow: var(--pixel-shadow); }
+  .feature-icon { font-size: 1.4rem; margin-bottom: 0.5rem; display: block; }
+  .feature-card h4 {
+    font-family: 'DM Mono', monospace; font-size: 0.75rem;
+    font-weight: 500; margin-bottom: 0.4rem; color: var(--ink);
+  }
+  .feature-card p { font-size: 0.83rem; line-height: 1.55; }
+
+  /* STACK */
+  .stack-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1.2rem; }
+  .stack-pill {
+    font-family: 'DM Mono', monospace; font-size: 0.75rem;
+    padding: 5px 12px; border: 1.5px solid var(--ink);
+    background: rgba(255,255,255,0.6);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .stack-pill span { font-size: 0.95rem; }
+
+  /* IMPACT */
+  .impact-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px; margin-top: 1.4rem;
+  }
+  .impact-card {
+    border: var(--border); padding: 1.2rem 1rem; text-align: center;
+    background: rgba(255,255,255,0.55); position: relative; overflow: hidden;
+  }
+  .impact-card::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--pink), var(--mauve));
+  }
+  .impact-num {
+    font-family: 'Press Start 2P', monospace; font-size: 1.1rem;
+    color: var(--hot); display: block; margin-bottom: 0.5rem; line-height: 1.3;
+  }
+  .impact-label {
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; color: #4a2072; line-height: 1.5;
+  }
+
+  /* PULLQUOTE */
+  .pullquote {
+    border-left: 5px solid var(--pink); margin: 1.5rem 0 0;
+    padding: 1rem 1.5rem; background: rgba(244,114,182,0.07);
+  }
+  .pullquote p { font-style: italic; font-size: 1.05rem; color: #4a2072; }
+
+  /* CALLOUT */
+  .callout {
+    border: 1.5px solid var(--teal);
+    background: rgba(45,212,191,0.06);
+    padding: 1rem 1.2rem; margin-top: 1.2rem;
+  }
+  .callout p {
+    font-size: 0.93rem; line-height: 1.65; color: #134e4a;
+    font-family: 'DM Mono', monospace;
+  }
+
+  footer {
+    text-align: center; padding: 2.5rem 1rem;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.4rem; color: rgba(255,255,255,0.25); letter-spacing: 0.15em;
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="pixel-badge">★ PORTFOLIO CASE STUDY ★</div>
+  <h1>Self Care<br><em>Journal</em></h1>
+  <p class="hero-sub">A personal OS for health, structure, and mindful investing</p>
+  <div class="tag-row">
+    <span class="tag pink">Python · FastAPI</span>
+    <span class="tag mauve">React · PyWebView</span>
+    <span class="tag gold">PyTorch · LSTM · Bayesian</span>
+    <span class="tag teal">GARCH · HMM · ETS · OLS</span>
+    <span class="tag green">PostgreSQL · 100% Local</span>
+  </div>
+</section>
+
+<div class="container">
+
+  <!-- 01 PROBLEM -->
+  <div class="section">
+    <div class="section-label">01 — PROBLEM</div>
+    <h2>Your most personal data deserves tools you own</h2>
+    <p>
+      Most wellness and finance apps share a common flaw: they are not really tools for you — they are data collection pipelines dressed as tools. Your cycle patterns, mood records, and investment behaviour are the product. They leave the moment you open the app.
+    </p>
+    <p>
+      At the same time, the most meaningful dimensions of wellbeing — physical health, mental clarity, daily structure, and financial stability — are almost never addressed in one place. You carry four different apps, each knowing only a fragment of the picture.
+    </p>
+    <div class="problem-grid">
+      <div class="problem-item" data-num="PROBLEM 01">
+        <p>Commercial health apps monetise sensitive cycle, mood, and symptom data — often sharing it with third parties without meaningful consent.</p>
+      </div>
+      <div class="problem-item" data-num="PROBLEM 02">
+        <p>Generic cycle models built on regular-cycle averages produce wide, unreliable predictions for anyone with high variability.</p>
+      </div>
+      <div class="problem-item" data-num="PROBLEM 03">
+        <p>Finance apps hand you charts without teaching you how the forecasts are made — encouraging passive consumption over mindful investing.</p>
+      </div>
+      <div class="problem-item" data-num="PROBLEM 04">
+        <p>No privacy-respecting tool links physical health, daily habits, reflective journaling, and financial tracking in a single local application.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 02 PHILOSOPHY -->
+  <div class="section">
+    <div class="section-label">02 — PHILOSOPHY</div>
+    <h2>Health, structure, and stability are <em>one</em> system</h2>
+    <p>
+      This project began as a menstrual cycle tracker for irregular cycles — a practical ML problem worth solving. But the further the build went, the clearer the underlying insight became: physical health does not exist in isolation. Mental and physical wellbeing are tightly linked to how organised and calm your daily life feels, and that feeling is inseparable from financial security.
+    </p>
+    <p>
+      Rather than building four separate apps, the design follows a single intentional progression.
+    </p>
+    <div class="progression">
+      <div class="prog-step">
+        <span class="prog-icon">🌙</span>
+        <span class="prog-num">STEP 01</span>
+        <h4>Track your body</h4>
+        <p>Understand your cycle, symptoms, and patterns. Data about your own body should stay yours.</p>
+      </div>
+      <div class="prog-step">
+        <span class="prog-icon">📖</span>
+        <span class="prog-num">STEP 02</span>
+        <h4>Build structure</h4>
+        <p>A daily journal and habit tracker add the calm that supports wellbeing — water, prayer, to-dos, reflection.</p>
+      </div>
+      <div class="prog-step">
+        <span class="prog-icon">🧘</span>
+        <span class="prog-num">STEP 03</span>
+        <h4>Live intentionally</h4>
+        <p>Structure reduces mental load. Less noise means better decisions — about health and about money.</p>
+      </div>
+      <div class="prog-step active">
+        <span class="prog-icon">📈</span>
+        <span class="prog-num">STEP 04</span>
+        <h4>Invest mindfully</h4>
+        <p>Build the forecasting tool yourself. Understand the model, own the logic, invest with conviction.</p>
+      </div>
+    </div>
+    <div class="pullquote" style="margin-top:1.4rem;">
+      <p>There are many apps that will track your ETFs and generate forecasts for you. But where is the understanding in that? Building the module yourself — learning GARCH, HMM regime detection, and walk-forward validation — means every number you look at is one you know how to interrogate.</p>
+    </div>
+  </div>
+
+  <!-- 03 APPROACH — CYCLE ML -->
+  <div class="section">
+    <div class="section-label">03 — CYCLE ML</div>
+    <h2>A three-phase model that learns <em>you</em>, not the average</h2>
+    <p>
+      The core insight: prediction confidence should grow as the model accumulates personal data, transitioning through mathematically distinct regimes rather than applying a one-size-fits-all model from day one.
+    </p>
+    <div class="pipeline">
+      <div class="pipeline-step">
+        <div class="pipeline-step-label pink">PHASE 1<br>COLD START<br>&lt; 3 CYCLES</div>
+        <div class="pipeline-step-body">
+          <strong>Negative Binomial Population Prior + GradientBoosting</strong>
+          <p>Bootstrapped from two peer-reviewed public datasets (Fehring/Marquette 2012 and Physionet mcPHASES 2024), filtered to the irregular-cycle subset. NB distribution was chosen over Gaussian because cycle length is a positive integer with right-skew overdispersion — a Gaussian prior would systematically underestimate the upper tail, exactly where irregular cycles live. CI: ±10–14 days.</p>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-step-label gold">PHASE 2<br>BAYESIAN<br>3–7 CYCLES</div>
+        <div class="pipeline-step-body">
+          <strong>Conjugate Gamma-Poisson Bayesian Update</strong>
+          <p>Each completed cycle shifts the posterior toward the user's personal pattern. Personal weight grows from 37% at 3 cycles to 87% at 7 cycles — a principled transition from population knowledge to individual truth. The conjugate form means updates are closed-form and computationally trivial. CI narrows to ±4–7 days.</p>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-step-label green">PHASE 3<br>LSTM<br>8+ CYCLES</div>
+        <div class="pipeline-step-body">
+          <strong>Two-layer stacked LSTM + Monte Carlo Dropout</strong>
+          <p>Pre-trained on public sequences and fine-tuned on personal data at 0.2× learning rate to prevent catastrophic forgetting. Inference runs 100 stochastic forward passes for a full predictive distribution rather than a single point estimate. 6-cycle lookback window. Huber loss (δ=2.0) for robustness to outlier cycles. CI narrows to ±2–4 days.</p>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="pipeline-step-label mauve">DATA<br>LAYER</div>
+        <div class="pipeline-step-body">
+          <strong>Local PostgreSQL — no cloud, no third parties</strong>
+          <p>All cycle records, daily logs, journal entries, habits, and investment data live in a local PostgreSQL instance. The only external calls are read-only market price requests to Yahoo Finance via a FastAPI proxy — no personal data ever leaves the machine.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 04 ETF TRACKER -->
+  <div class="section">
+    <div class="section-label">04 — ETF TRACKER MODULE</div>
+    <h2>A production-grade Islamic ETF forecasting pipeline</h2>
+    <p>
+      The ETF module is not a wrapper around a charting library. It is a multi-layer financial forecasting pipeline built from first principles — model selection, volatility estimation, market-regime detection, Shariah-specific signal engineering, and honest walk-forward validation, all running locally and serving a React frontend via FastAPI.
+    </p>
+
+    <h3>Four layers of the forecast</h3>
+    <div class="etf-layers">
+      <div class="etf-layer" data-layer="LAYER 1 — POINT FORECAST">
+        <h4>Holt-Winters ETS (1Y / 5Y) + Log-linear OLS (10Y)</h4>
+        <p>Horizon selection drives model choice. Short and medium horizons use Holt-Winters Exponential Smoothing — undamped for 1Y (52 weekly steps), damped for 5Y (260 steps) to prevent over-extrapolation. The 10-year horizon switches to log-linear OLS on monthly bars, fitting <em>log(y) = a + b·t</em> and exponentiating back, with CAGR and R² as primary metrics.</p>
+      </div>
+      <div class="etf-layer" data-layer="LAYER 2 — VOLATILITY">
+        <h4>GARCH(1,1) + ETS residual floor → blended CI</h4>
+        <p>The 95% confidence band is not taken from ETS alone. A GARCH(1,1) model fits log-return conditional variance and forecasts per-step uncertainty. The final band uses an element-wise max of the GARCH cumulative price std and the ETS residual floor (σ·√h), then scales the result by the HMM regime multiplier. This means the CI is wide when markets are volatile and the regime is stressed — not a fixed ±% figure.</p>
+      </div>
+      <div class="etf-layer highlight" data-layer="LAYER 3 — REGIME DETECTION">
+        <h4>2-state HMM → CI multiplier (1.0× or 1.35×)</h4>
+        <p>A Hidden Markov Model with Gaussian emissions is fitted on ETF log returns joined with VIX data. The two latent states correspond to low-volatility and high-volatility market regimes. In the high-vol state the CI multiplier is set to 1.35, widening both bands to reflect elevated uncertainty. The current regime, transition probabilities, and state label are surfaced to the user in the diagnostics panel.</p>
+      </div>
+      <div class="etf-layer highlight" data-layer="LAYER 4 — SHARIAH FEATURES">
+        <h4>Islamic index rebalance flags + XLK/XLF ratio</h4>
+        <p>Shariah ETFs face periodic rebalance pressure during MSCI Islamic (Feb/May/Aug/Nov) and DJIM (Mar/Jun/Sep/Dec) review weeks (days 8–24 of the review month). These weeks are flagged as binary features and collapsed into a <em>rebalance_pressure_pct</em> signal. Separately, the XLK/XLF ratio (tech vs financials sector relative strength) is computed — Shariah ETFs systematically overweight tech and exclude financials, so this ratio is a domain-relevant leading indicator. Rolling 26-week correlations vs SPY and VIX complete the enrichment layer.</p>
+      </div>
+    </div>
+
+    <h3>Exogenous context series</h3>
+    <p>
+      The pipeline pulls four external series at the same bar frequency as the ETF: <strong>^VIX</strong> (market fear gauge), <strong>XLK</strong> (tech sector), <strong>XLF</strong> (financials sector), and <strong>SPY</strong> (broad market). These feed the HMM, the factor regression, and the Shariah feature layer. Every exogenous series is optional — if Yahoo Finance is unreachable or rate-limited, the pipeline degrades key by key rather than failing.
+    </p>
+
+    <h3>Factor regression</h3>
+    <p>
+      An OLS regression of ETF log returns on SPY and XLK log returns produces three outputs that matter for Islamic investors: <strong>Jensen's alpha</strong> (annualised excess return independent of market exposure), <strong>β<sub>market</sub></strong> (sensitivity to broad market moves), and <strong>β<sub>tech</sub></strong> (technology sector tilt). Tracking error and R² round out the attribution picture. These numbers answer the question a mindful investor actually needs to ask: is this fund generating independent return, or is it just leveraged SPY?
+    </p>
+
+    <h3>Walk-forward validation — the honesty layer</h3>
+    <p>
+      Every forecast is validated with an expanding-window walk-forward evaluation. The validation horizon is matched to the forecast horizon where data permits, and a <em>wf_capped</em> flag is set if it had to be shortened — the UI never claims more validation than the data supports.
+    </p>
+    <div class="metrics-grid">
+      <dl class="metric-cell">
+        <dt>RMSE / MAE</dt>
+        <dd>Price-space prediction error across up to 20 out-of-sample folds</dd>
+      </dl>
+      <dl class="metric-cell">
+        <dt>MAPE</dt>
+        <dd>Mean absolute percentage error — scale-independent across different-priced ETFs</dd>
+      </dl>
+      <dl class="metric-cell">
+        <dt>DIR. ACCURACY</dt>
+        <dd>% of folds where the model predicted the correct direction vs the previous close</dd>
+      </dl>
+      <dl class="metric-cell">
+        <dt>CI COVERAGE</dt>
+        <dd>% of actuals that fell inside the forecast's 95% confidence band</dd>
+      </dl>
+      <dl class="metric-cell">
+        <dt>CRPS</dt>
+        <dd>Continuous Ranked Probability Score — measures both calibration and sharpness of the probabilistic forecast</dd>
+      </dl>
+      <dl class="metric-cell">
+        <dt>WF SHARPE</dt>
+        <dd>Annualised Sharpe of a long-if-forecast-positive / short-otherwise strategy across folds</dd>
+      </dl>
+    </div>
+
+    <h3>Graceful degradation</h3>
+    <div class="callout">
+      <p>
+        GARCH requires <code>arch</code> · HMM requires <code>hmmlearn</code> · CRPS exact form requires <code>scipy</code> · Exogenous series require a live network connection. Every optional component has a documented fallback: missing GARCH → ETS residual σ floor only. Missing HMM → ci_multiplier fixed at 1.0. Missing exogenous → Shariah features, factor regression, and VIX-informed HMM degrade key by key. The only hard prerequisites are a valid symbol and enough bars (≥ 20 weekly for ETS, ≥ 12 monthly for OLS).
+      </p>
+    </div>
+
+    <h3>Portfolio tracker</h3>
+    <p>
+      Alongside forecasting, the module tracks actual investments. Adding an entry records the closing price on the purchase date (fetched from Yahoo Finance at insert time), computes units held, and from that point forward calculates current value, gain/loss, and return % against live prices. A cumulative Invested vs Current Value chart shows portfolio trajectory over time. All records are stored in PostgreSQL — no spreadsheet, no cloud.
+    </p>
+  </div>
+
+  <!-- 05 SOLUTION -->
+  <div class="section">
+    <div class="section-label">05 — SOLUTION</div>
+    <h2>A native pixel-art desktop — four windows, one personal OS</h2>
+    <p>
+      Built with a FastAPI backend, a React frontend bundled by Vite, and PyWebView to deliver a genuine native desktop window — no browser, no Electron, minimal footprint. The pixel-art aesthetic is implemented entirely in inline JS design tokens with custom SVG cursors and zero CSS frameworks.
+    </p>
+    <div class="features">
+      <div class="feature-card">
+        <span class="feature-icon">🌙</span>
+        <h4>Cycle Tracker</h4>
+        <p>Log flow, mood, symptoms, sleep, and stress. Recharts visualisations of CI-narrowing trend, cycle history, symptom frequency, and mood distribution. Phase progress bar and model explanation panel.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📖</span>
+        <h4>Journal + Habits</h4>
+        <p>Pixel-art ruled journal with weather selection. Habit tracker for water intake, five daily prayers, Quran, to-dos, and project ideas. TOAST-compressed PostgreSQL storage — under 10 MB for a decade of entries.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📈</span>
+        <h4>Islamic ETF Tracker</h4>
+        <p>Live charts (1W/1M/1Y), portfolio P&amp;L with units-based valuation, and a multi-layer forecast pipeline (GARCH, HMM, ETS/OLS) with Shariah-specific signal features and walk-forward validation.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🏠</span>
+        <h4>Home Widgets</h4>
+        <p>Always-on summary tiles: cycle phase and next-period estimate, today's journal preview and to-dos, and live ETF prices — shown whenever all windows are closed.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🔒</span>
+        <h4>Privacy by Design</h4>
+        <p>Zero cloud dependency for personal data. One-shot <code>setup.sh</code> automates schema creation, model training, and frontend build. No account, no subscription, no telemetry.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">⚙️</span>
+        <h4>CLI Pipeline</h4>
+        <p>Full ML lifecycle via <code>pipeline.py</code>: setup, predict, Bayesian update, LSTM fine-tune. <code>demo.py</code> runs the complete pipeline with synthetic data — no database required.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 06 STACK -->
+  <div class="section">
+    <div class="section-label">06 — STACK</div>
+    <h2>Technology choices</h2>
+    <p>Every dependency was chosen deliberately — favouring transparency and minimal overhead over convenience abstractions.</p>
+    <div class="stack-grid">
+      <div class="stack-pill"><span>🐍</span> Python 3.11+</div>
+      <div class="stack-pill"><span>⚡</span> FastAPI + Uvicorn</div>
+      <div class="stack-pill"><span>⚛️</span> React + Vite</div>
+      <div class="stack-pill"><span>🖥️</span> PyWebView</div>
+      <div class="stack-pill"><span>🐘</span> PostgreSQL (raw psycopg2)</div>
+      <div class="stack-pill"><span>🔥</span> PyTorch · LSTM · MC Dropout</div>
+      <div class="stack-pill"><span>📊</span> Scikit-learn · XGBoost</div>
+      <div class="stack-pill"><span>📉</span> SciPy · Negative Binomial</div>
+      <div class="stack-pill"><span>📈</span> statsmodels · Holt-Winters ETS</div>
+      <div class="stack-pill"><span>📉</span> arch · GARCH(1,1)</div>
+      <div class="stack-pill"><span>🔀</span> hmmlearn · 2-state HMM</div>
+      <div class="stack-pill"><span>📊</span> Recharts</div>
+      <div class="stack-pill"><span>🎨</span> Inline JS design tokens (no CSS framework)</div>
+    </div>
+    <div class="pullquote">
+      <p>No ORM — plain SQL for transparency and performance. No CSS framework — all styling derives from a single <code>theme.js</code> design token file. PyWebView over Electron — one process, minimal footprint, no Node.js runtime in production.</p>
+    </div>
+  </div>
+
+  <!-- 07 OUTCOMES -->
+  <div class="section">
+    <div class="section-label">07 — OUTCOMES</div>
+    <h2>What it demonstrates</h2>
+    <p>A privacy-respecting personal OS built from scratch — proving that you don't need to hand your data to a corporation to get intelligent, personalised tooling for health, structure, and investing.</p>
+    <div class="impact-row">
+      <div class="impact-card">
+        <span class="impact-num">3→1</span>
+        <span class="impact-label">ML phases, auto-promoted as personal data accumulates</span>
+      </div>
+      <div class="impact-card">
+        <span class="impact-num">±2–4d</span>
+        <span class="impact-label">Cycle prediction CI at Phase 3 — from ±14 days at cold start</span>
+      </div>
+      <div class="impact-card">
+        <span class="impact-num">6 models</span>
+        <span class="impact-label">NB prior · Bayesian · LSTM · ETS · OLS · GARCH + HMM</span>
+      </div>
+      <div class="impact-card">
+        <span class="impact-num">0 cloud</span>
+        <span class="impact-label">All personal data local — nothing shared or monetised</span>
+      </div>
+      <div class="impact-card">
+        <span class="impact-num">4 apps</span>
+        <span class="impact-label">Cycle tracker · journal · habits · Islamic ETF portfolio</span>
+      </div>
+      <div class="impact-card">
+        <span class="impact-num">8 metrics</span>
+        <span class="impact-label">Walk-forward validation: RMSE, MAE, MAPE, DA, coverage, CRPS, Sharpe, α</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 08 REFLECTION -->
+  <div class="section">
+    <div class="section-label">08 — REFLECTION</div>
+    <h2>Key engineering decisions</h2>
+    <p>
+      Choosing <strong>Negative Binomial</strong> over Gaussian for Phase 1 was the first meaningful technical decision: cycle lengths are integer-valued and right-skewed, so a Gaussian prior would systematically underestimate the upper tail — exactly where irregular cycles live.
+    </p>
+    <p>
+      Fine-tuning the LSTM at <strong>0.2× learning rate</strong> with Huber loss guards against catastrophic forgetting and single-cycle outliers, letting the model stay flexible without being destabilised by noise.
+    </p>
+    <p>
+      The <strong>blended CI approach</strong> in the ETF pipeline — taking the element-wise max of GARCH cumulative variance and ETS residual floor, then scaling by the HMM multiplier — avoids the failure mode where a point-forecast model reports confidently narrow bands during historically stressed markets. Each layer adds a floor, not a ceiling.
+    </p>
+    <p>
+      Building the <strong>walk-forward validator to cap its own horizon</strong> when data is insufficient, and surfacing the <em>wf_capped</em> flag to the UI, was a deliberate choice: a forecast tool that tells you when it cannot validate itself honestly is more trustworthy than one that silently reports metrics computed on too few folds.
+    </p>
+    <p>
+      Using <strong>raw psycopg2 with plain SQL</strong> instead of an ORM keeps every database operation fully auditable. Using <strong>PyWebView instead of Electron</strong> keeps the binary footprint small and removes Node.js as a production runtime dependency — in deployment, the React build is static files served by FastAPI, so there is exactly one process to manage.
+    </p>
+  </div>
+
+</div>
+
+<footer>
+  ★ SELF CARE JOURNAL — PORTFOLIO CASE STUDY ★<br><br>
+  Python · FastAPI · React · PyTorch · GARCH · HMM · PostgreSQL
+</footer>
+
+</body>
+</html>

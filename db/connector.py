@@ -476,6 +476,9 @@ def save_etf_forecast(
     currency:           str = "",
     history_dates:      list | None = None,
     history_values:     list | None = None,
+    regime:             dict | None = None,
+    factors:            dict | None = None,
+    shariah_features:   dict | None = None,
 ) -> str:
     """Persist a forecast run. Returns the new row UUID."""
     rows = _fetch(
@@ -484,8 +487,9 @@ def save_etf_forecast(
             (symbol, horizon, model_name, model_rationale, forecast_from,
              forecast_dates, forecast_values, conf_lower, conf_upper,
              metrics, feature_importance, currency,
-             history_dates, history_values)
-        VALUES (%s, %s, %s, %s, %s::date, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+             history_dates, history_values,
+             regime, factors, shariah_features)
+        VALUES (%s, %s, %s, %s, %s::date, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id::text
         """,
         (
@@ -499,6 +503,9 @@ def save_etf_forecast(
             currency,
             psycopg2.extras.Json(history_dates or []),
             psycopg2.extras.Json(history_values or []),
+            psycopg2.extras.Json(regime or {}),
+            psycopg2.extras.Json(factors or {}),
+            psycopg2.extras.Json(shariah_features or {}),
         ),
     )
     return rows[0]["id"]
@@ -512,6 +519,7 @@ def get_etf_forecast(symbol: str, horizon: str) -> dict | None:
                forecast_from::text, forecast_dates, forecast_values,
                conf_lower, conf_upper, metrics, feature_importance,
                currency, history_dates, history_values,
+               regime, factors, shariah_features,
                to_char(created_at, 'YYYY-MM-DD HH24:MI') AS run_at
         FROM etf_forecasts
         WHERE symbol = %s AND horizon = %s

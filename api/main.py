@@ -570,6 +570,9 @@ def run_etf_forecast(symbol: str, horizon: str = Query("1y")):
             currency           = result["currency"],
             history_dates      = result["history_dates"],
             history_values     = result["history_values"],
+            regime             = result.get("regime"),
+            factors            = result.get("factors"),
+            shariah_features   = result.get("shariah_features"),
         )
     except Exception as e:
         err = str(e)

@@ -1,0 +1,340 @@
+Halal ETF Market, ISWD.SW & IGDA.L Deep-Dive, and Python Forecasting Pipelines
+TL;DR
+Important ticker correction: IGDA.L is the Invesco Dow Jones Islamic Global Developed Markets UCITS ETF Acc (ISIN IE000UOXRAM8), not an iShares product; the iShares MSCI EM Islamic UCITS ETF trades under ISDE.L (ISIN IE00B27YCP72). This report profiles ISWD.SW, IGDA.L, and ISDE.L so that both the user's literal request (IGDA.L) and apparent intent (an iShares EM Islamic ETF) are covered.
+For medium-term (weeks to months) forecasting, the recommended stack is a hybrid of (i) GARCH-family volatility models, (ii) gradient-boosted trees (XGBoost/LightGBM) on engineered factor & macro features, and (iii) regime gating via a Gaussian Hidden Markov Model — all trained under walk-forward cross-validation. For long-term (months to 1+ years), shift to Bayesian structural time-series (BSTS) / Prophet / NeuralProphet, a Temporal Fusion Transformer (TFT) trained jointly on ISWD / IGDA / ISDE with static categoricals, and a Fama–French / Carhart factor model adapted for Islamic indices.
+The defining quantitative feature of these ETFs is structural: Shariah screens force a permanent zero-weight on Financials and a heavy tilt to Technology (35–42%), Healthcare and Energy — so any model that ignores tech-factor and quality-factor dynamics will systematically misprice them.
+
+SECTION 1 — Halal ETF Market Overview
+Market size and trajectory
+The global Islamic finance industry held roughly USD 5.4 trillion of assets in 2024 and is projected to reach USD 9.75 trillion by 2029 (~10% CAGR), with Islamic funds (mutual funds + ETFs) the fastest-growing sub-segment — Market Data Forecast's 2025 Islamic Finance Market report projects the Islamic funds segment specifically at 12.4% CAGR from 2025 to 2033, "with rising investor demand for Sharia-compliant asset management solutions among high-net-worth individuals." Within that, Shariah-compliant ETFs remain a small but rapidly expanding niche — the listed UCITS Islamic ETF universe in Europe is dominated by a handful of products (the four iShares MSCI Islamic UCITS ETFs launched in 2007 — ISDU/ISWD/ISDE/ISEU — plus newer entrants from Invesco, HSBC and Wahed). In US-listed wrappers, SPUS, HLAL, SPTE, SPSK and UMMA dominate, while AAOIFI-standard Asian markets (Malaysia, Saudi Arabia, Indonesia) host their own listings.
+Inflows have accelerated since 2022: per ETF Express (February 16, 2026), Invesco's IGDA had USD 1.1 billion AUM as of February 2026, "currently the largest such product in Europe with USD1.1 billion in assets under management, just over a third of all equity assets in Islamic UCITS ETFs." Invesco followed up by listing the Invesco MSCI ACWI Islamic M-Series UCITS ETF (ticker MWIM) on the London Stock Exchange on 13 February 2026 with a TER of 0.35% (ETF Express; ETF World UK).
+Industry drivers: (a) per the Pew Research Center's April 2017 report The Changing Global Religious Landscape, "by 2060, the count of Muslims (3.0 billion, or 31% of the population) will near the Christian count (3.1 billion, or 32%)"; (b) overlap of Shariah principles with ESG mandates; (c) sovereign-led wealth accumulation in the GCC — the UAE Cabinet-approved UAE Strategy for Islamic Finance and Halal Industry, announced May 6, 2025, states (Sheikh Mohammed bin Rashid Al Maktoum): "We aim to increase the assets of our Islamic banks from AED986 billion to AED2.56 trillion within six years"; and (d) digitization via apps like Zoya, Wahed, and Amal that drive retail demand.
+What makes an ETF Shariah-compliant
+Two filters are applied sequentially.
+1. Business-activity (qualitative) screen — exclusions of "haram" sectors:
+Conventional banks, insurance and other interest-bearing finance (riba)
+Alcohol, tobacco, pork-related products, pornography/adult entertainment
+Gambling and casinos (maysir)
+Conventional weapons / defense (for some standards)
+Cannabis (added to MSCI methodology in May 2019 review)
+Online dating services (added in November 2021)
+Hotels and certain media (with carve-outs)
+2. Financial-ratio (quantitative) screen — leverage and "impurity" filters: Under the MSCI Islamic Index Series methodology (October 2024 / May 2025 versions), three ratios must all stay below thresholds:
+Total debt / Total assets ≤ 33.33%
+(Cash + interest-bearing securities) / Total assets ≤ 33.33%
+(Accounts receivable + cash) / Total assets ≤ 33.33%
+A 30% (vs 33.33%) tighter "entry buffer" applies to new constituents to reduce turnover. Existing constituents are removed only after exceeding the threshold for three consecutive index reviews ("exit buffer"). MSCI also operates an "M-Series" variant whose denominators are 36-month average market capitalization rather than total assets — used by S&P/Dow Jones Islamic indices and the Invesco IGDA. A non-permissible revenue cap (≤ 5%) applies to mixed-activity firms, and a dividend purification factor is applied to total-return calculations so income derived from impermissible sources is mathematically donated.
+MSCI methodology is certified by an independent Shariah advisory committee that issues a periodic fatwa (since March 2007 per MSCI's published methodology documents).
+Structural differences vs conventional ETFs
+No interest/coupon-bearing assets at fund level — cash management is restricted to non-interest-bearing accounts or Shariah-compliant money-market instruments.
+Mechanical sector concentration: removing Financials (typically 14–18% of MSCI World) forces re-weighting into Tech, Healthcare, Energy and Consumer Staples; this is a permanent factor-tilt embedded in the product itself.
+Dividend purification: total-return indices applied to Islamic ETFs include a dividend adjustment factor for impure income, slightly reducing distributable yield relative to conventional siblings.
+Reduced investable universe → modestly higher tracking error and TER: Islamic UCITS ETFs typically charge 0.30–0.49% vs 0.05–0.20% for conventional MSCI World/EM trackers (justETF; Amal Invest data).
+Quarterly + semi-annual reviews: MSCI rebalances Islamic indices at every quarterly review for financial-ratio screens, with full business-activity rescreening at the May semi-annual review — much more frequent than conventional MSCI rebalancing.
+
+SECTION 2 — Deep Dive on ISWD.SW, IGDA.L (and ISDE.L)
+A. ISWD.SW — iShares MSCI World Islamic UCITS ETF (USD Dist)
+Attribute
+Value
+Issuer
+BlackRock / iShares II plc
+ISIN / WKN
+IE00B27YCN58 / A0NA46
+Inception
+7 December 2007
+Domicile
+Ireland (UCITS)
+Index
+MSCI World Islamic Index (net TR, USD)
+Replication
+Physical, full replication
+TER
+0.30% p.a.
+AUM
+~USD 882m (BlackRock factsheet, 2026); EUR 914m (justETF)
+Distribution
+Semi-annual, distributing (USD share class)
+Listings (this share class)
+SIX Swiss Exchange (USD, ISWD); LSE (USD ISDW, GBP ISWD); Xetra/Stuttgart/gettex (EUR, IUSD)
+Holdings
+~394 stocks
+12-mo dividend yield
+~1.13% (BlackRock)
+1Y / 3Y / 5Y total return (EUR, justETF)
++14.55% / +39.48% / +63.21%; since inception +279.58%
+1Y / 3Y volatility
+18.53% / 15.18%
+Top holdings (Jan 2026)
+Microsoft 12.15%, Tesla 5.30%, Exxon Mobil 2.70%, ASML 2.49%, J&J 2.47%, Micron 2.21%, AMD 1.85%, P&G 1.58%, Chevron 1.48%, Lam Research 1.41%
+Sector mix
+Technology 34.9%, Industrials 13.7%, Health Care 11.0%, Energy 11.0%, Other 29.3%
+Country mix
+US 56.7%, Japan 7.5%, France 4.4%, Canada 3.8%, Other 27.6%
+B. IGDA.L — Invesco Dow Jones Islamic Global Developed Markets UCITS ETF Acc
+Attribute
+Value
+Issuer
+Invesco / Invesco Markets II plc
+ISIN / WKN
+IE000UOXRAM8 / A3C6Z0
+Inception
+7 January 2022
+Domicile
+Ireland (UCITS)
+Index
+Dow Jones Islamic Market Developed Markets Index (net TR)
+Replication
+Physical, full replication (1,353 holdings)
+TER
+0.40% p.a.
+AUM
+USD 1.1 billion (ETF Express, February 2026 — "the largest such product in Europe with USD1.1 billion in assets under management, just over a third of all equity assets in Islamic UCITS ETFs")
+Distribution
+Accumulating (no cash payout)
+Listings
+LSE (USD, IGDA, market maker BNP); SIX Swiss Exchange (USD)
+1Y / 3Y total return (EUR, justETF)
++33.37% / +68.02%; since inception +52.94%
+1Y / 3Y volatility
+12.61% / 14.92%
+Max drawdown (since inception)
+−23.50%
+Top holdings (Mar 2026)
+NVIDIA 8.03%, Apple 6.86%, Microsoft 5.10%, Amazon 3.82%, Alphabet A 3.13%, Broadcom 2.80%, Alphabet C 2.50%, Meta 2.42%, Tesla 2.01%, Eli Lilly 1.36%
+Sector mix
+Technology 39.8%, Health Care 11.3%, Consumer Discretionary 11.1%, Industrials 10.0%, Other 27.9%
+Country mix
+US 73.1%, Japan 4.5%, South Korea 2.6%, Switzerland 2.2%, Other 17.7%
+SFDR classification
+Article 6
+Note: IGDA uses the Dow Jones Islamic methodology — market-cap-based ratios capped at 33% of trailing 24-month average market cap; in September 2023, DJIM eliminated its cash and accounts-receivable screens, leaving only a leverage screen and the 5% non-permissible revenue threshold. This makes the DJIM universe somewhat broader than MSCI's, which is the main structural reason IGDA can host a larger 1,353-holding portfolio versus ISWD's 394 (and explains why IGDA has held many large mega-cap US tech names — including Apple, Amazon, Alphabet and Meta — that have historically dropped in and out of MSCI's stricter total-assets-based ratios).
+C. ISDE.L — iShares MSCI EM Islamic UCITS ETF (USD Dist) [user's apparent intent]
+Attribute
+Value
+Issuer
+BlackRock / iShares II plc
+ISIN
+IE00B27YCP72
+Inception
+7 December 2007
+Domicile
+Ireland (UCITS)
+Index
+MSCI Emerging Markets Islamic Index (net TR, USD)
+Replication
+Physical, full replication
+TER
+0.35% p.a.
+AUM
+USD ~479m (BlackRock, Apr 2026); EUR ~435m (justETF)
+Distribution
+Semi-annual, distributing
+Listings
+LSE (USD ISDE / GBP ISEM); Xetra/Stuttgart/gettex (EUR, IUSE)
+Holdings
+~400 stocks
+1Y / 3Y / 5Y total return (EUR)
++47.85% / +61.70% / +37.72%; since inception +87.68%
+1Y / 3Y volatility
+19.91% / 17.12%
+Max drawdown (since inception)
+−59.01%
+Top holdings (Jan 2026)
+Samsung 14.15%, SK hynix 8.74%, Reliance 2.44%, Hon Hai 2.38%, MediaTek 2.29%, Xiaomi 2.14%, Delta Electronics 2.07%, Samsung Pref 1.76%, Vale 1.61%, AngloGold 1.49%
+Sector mix
+Technology 42.4%, Basic Materials 13.8%, Energy 9.5%, Industrials 7.3%, Other 27.0%
+Country mix
+South Korea 33.8%, India 12.6%, Taiwan 12.2%, China 12.1%, Other 29.3%
+Trading and liquidity considerations
+SIX Swiss Exchange (ISWD.SW) trades roughly 1,500–2,000 shares/day on Yahoo Finance — thin secondary-market liquidity, but ETFs have authorized-participant arbitrage so wide spreads close in primary market. CHF currency conversion adds a layer for Swiss-franc-denominated buyers; the share class itself is USD-denominated.
+LSE (IGDA.L / ISDE.L) is the deepest European venue with multiple market makers (BNP for IGDA per justETF) and intraday spreads typically 0.05–0.20% on liquid Islamic ETFs.
+For modeling, use the NAV total-return series (BlackRock publishes daily) rather than secondary-market price to avoid premium/discount noise, and USD-denominated returns to neutralize CHF/GBP fluctuations.
+Key risks
+Sector concentration (single biggest risk): Tech dominates 35–42% of every fund. A multi-quarter tech drawdown will hit these ETFs disproportionately. Excluding financials structurally reduces effective sector breadth.
+Single-stock concentration: Samsung alone is 14% of ISDE; Microsoft is 12% of ISWD; NVIDIA is 8% of IGDA. Idiosyncratic news in mega-caps will move the ETF.
+Tracking error from physical full replication of large universes (especially IGDA at 1,353 names — operationally challenging in EM/illiquid names).
+FX risk: Underlying assets are multi-currency; the fund share class is USD. For a CHF-based investor in ISWD.SW, USD/CHF moves directly into returns.
+Geographic concentration in ISDE: 70%+ in just 4 Asian markets (Korea, India, Taiwan, China) — Asian semiconductor cycle dominates.
+Rebalance-driven turnover: Quarterly financial-ratio rescreening can trigger forced sells, particularly in rising-rate regimes when corporate leverage ratios drift.
+Methodology risk: A change like DJIM's September 2023 screen relaxation can suddenly expand the universe; MSCI tightening would do the reverse.
+Lower dividend yield: ~1.0–1.3% vs ~1.5–1.8% for conventional MSCI World — purification reduces realized income and shifts the return profile toward capital gains.
+
+SECTION 3 — What Makes These ETFs Unique for Modeling
+Factor exposure
+Academic and empirical work (e.g. Safiullah & Shamsuddin, International Review of Finance, 2021; Abdul Halim, Institutions and Economies, 2023; Halal Terminal market analysis 2026) finds a consistent factor signature for Islamic equity portfolios:
+Quality positive (low leverage by construction)
+Growth positive (tech overweight, low-debt firms tend to be growth)
+Value negative (Financials/Utilities/Old Energy excluded or de-weighted)
+Size factor mildly negative (universe skews large-cap mega-tech)
+Momentum coefficient unstable — positive in tech-up regimes, negative in mean-reversion regimes
+Halal Terminal's 2026 attribution decomposes Shariah-screen excess return as ~65–70% from technology/growth exposure, 15–20% from quality (low leverage), and 10–15% from financial-sector exclusion. For modeling, this means a five-factor (Fama–French 5 + momentum) regression will explain a large share of return variance, but with sign-flipped HML and structurally elevated quality and growth loadings.
+Sector concentration biases
+Tech ≥ 35% in every Islamic ETF studied — the dominant single-name and single-sector risk
+Healthcare 10–13%, Industrials 7–14%, Energy 4–11%
+Financials = 0% (vs ~14–18% in conventional benchmarks)
+For ISDE: Basic Materials elevated to 14% (Vale, AngloGold) — an emerging-market commodity exposure not present in ISWD
+Correlation with conventional indices
+Empirical correlations of monthly returns between MSCI World Islamic and MSCI World are typically 0.92–0.97, and 0.90–0.95 between MSCI EM Islamic and MSCI EM (consistent with multiple studies — Alam, Journal of Asset Management, 2013; Asia-Pacific Financial Markets 2022). During crises, correlations rise (less diversification benefit) but Islamic indices typically show lower downside because financial sector contagion is mechanically avoided — confirmed for the COVID-19 period in Risks journal (MDPI, 2023) showing Islamic indices outperformed conventional in both developed and developing markets during the pandemic stress period.
+Volatility characteristics
+ISWD 3-year volatility 15.2% vs MSCI World ~14.5–15.5% — similar.
+ISDE 3-year volatility 17.1% vs MSCI EM ~17–19% — slightly lower (financials exclusion reduces tail-bank-risk).
+IGDA 3-year volatility 14.9% — slightly lower than ISWD likely due to its broader 1,353-stock diversification.
+Shariah rebalancing events as alpha signals
+The May semi-annual and quarterly index reviews mechanically force trades. Two academic findings:
+A September 2023 DJIM methodology change (dropping cash and receivables screens) expanded the investable universe overnight (per the "From Binary Screens to Continuous Compliance" CSCI paper on arXiv, 2024). Funds tracking DJIM (such as IGDA) experienced re-composition.
+Rebalance-front-running and post-rebalance reversion patterns documented in conventional MSCI indices may be exploitable in Islamic versions too, but the small AUM and low daily turnover of ISWD/ISDE limit profitable execution for retail.
+Dividend / income characteristics
+Total return ≈ price return + dividend yield − purification deduction. Empirically, ISWD shows ~1.0–1.3% trailing yield (vs ~1.7% for conventional MSCI World ETFs like SWDA.L); ISDE ~1.3–2.4% depending on basis. For long-horizon forecasting, the lower yield base means total-return forecasts should weight capital-gain dynamics more heavily — a useful prior for Bayesian models.
+
+SECTION 4 — Recommended Forecasting Models and Pipelines
+For each model below I list: (a) why it suits halal ETFs, (b) Python libraries, (c) features/engineering, (d) strengths/weaknesses, (e) references.
+4.1 Classical time series — ARIMA/SARIMA and GARCH
+Why: ISWD, ISDE and IGDA show clear volatility clustering (squared-return autocorrelation), and weekly/monthly returns exhibit slow mean reversion. Khairunnisa, Rodoni & Rama (2024) successfully applied ARIMA to six Shariah indices and concluded they are EMH-weak-form-compliant (predictable by historical data). For volatility specifically, GARCH-family models dominate (Akbar, Bhutto & Rajput 2021; the Volatility Patterns of Islamic Equity Funds study, 2025).
+Python libraries: statsmodels.tsa.arima.model.ARIMA, statsmodels.tsa.statespace.SARIMAX, arch (Kevin Sheppard) for GARCH(1,1), EGARCH, GJR-GARCH, TGARCH; pmdarima.auto_arima for grid search of (p,d,q).
+Features: Log-returns; first-differenced log-price; squared returns for variance modeling; calendar dummies for quarterly rebalances.
+Strengths: Interpretable; well-suited to weekly horizons; GARCH gives one-step-ahead conditional variance for VaR/risk overlay. Asymmetric variants (GJR-GARCH, EGARCH) capture the leverage effect.
+Weaknesses: Linear; cannot use exogenous features cleanly without SARIMAX; assumes stationarity which fails at regime changes; mean-equation R² typically very low for equity returns.
+References: Bollerslev (1986) JOE; Glosten, Jagannathan, Runkle (1993); Khairunnisa et al. (2024) Jurnal Ekonomi Syariah; Hassan et al. (2022).
+4.2 ML — XGBoost / LightGBM with financial features
+Why: Gradient-boosted trees handle non-linearities, missing data, mixed feature types, and have dominated the M4/M5 forecasting competitions. They excel at directional classification (sign of next return) which is the practically useful signal for halal ETFs given low expected return spread.
+Python libraries: xgboost, lightgbm, catboost, scikit-learn, mlforecast, optuna for hyperparameter tuning.
+Features: Lagged returns (1, 5, 10, 21, 63 days); rolling vols and Sharpe ratios at multiple horizons; technical indicators (RSI, MACD, Bollinger Z, ADX) computed with pandas-ta or ta-lib; macro features (VIX, USD index, TED spread proxy, 10Y Treasury yield, Brent oil) via FRED; sector-rotation features (XLK, XLV, XLE relative strength) as proxies for Islamic-overweight sectors; FX (DXY, USDCHF for ISWD.SW); cross-asset signals (gold, BTC); calendar features (day-of-week, month-end, quarterly-review dummies).
+Strengths: Robust to feature engineering experimentation; SHAP values give feature attribution; handles non-stationarity via re-training in walk-forward; very strong for medium-term (weekly–monthly).
+Weaknesses: Doesn't learn temporal structure inherently (must be encoded via lags); prone to overfitting in financial data; needs careful walk-forward CV.
+References: Chen & Guestrin (2016) XGBoost paper, KDD; Gu, Kelly & Xiu (2020) "Empirical Asset Pricing via Machine Learning," Review of Financial Studies.
+4.3 Deep learning — LSTM and Temporal Fusion Transformer (TFT)
+Why: Halal ETFs are heavily exposed to a small set of mega-cap tech names whose news flow and earnings cycles drive most of their variance. LSTMs capture sequential structure; TFTs add interpretable multi-horizon attention and can ingest static covariates (e.g., "this is ISWD" vs "this is IGDA") to share learning across the three Islamic ETFs.
+Python libraries: tensorflow.keras / pytorch for raw LSTM; pytorch-forecasting (Lim et al. TFT implementation) — see official TemporalFusionTransformer class; darts (Unit8) which wraps NHITS, TFT, NBEATS, TCN behind a sklearn-style API; neuralforecast (Nixtla) for fast TFT/NHITS.
+Features for TFT: Static categorical = fund_id (ISWD/IGDA/ISDE); time-varying known = day-of-week, days-to-quarterly-rebalance; time-varying observed = OHLCV, factor returns, macro indicators; targets = log-return at horizons 5, 21, 63 days.
+Strengths: TFT outputs quantile forecasts (uncertainty bands), variable importance and attention weights — useful for academic interpretation. NeuralProphet/NHITS also strong on monthly horizons.
+Weaknesses: Data-hungry — ISWD has only ~18 years of daily data (~4,500 obs) and IGDA only ~4 years (~1,000 obs), risking overfitting; black-box; expensive to retrain in walk-forward.
+References: Lim, Arik, Loeff & Pfister (2021) "Temporal Fusion Transformers for Interpretable Multi-Horizon Time Series Forecasting," International Journal of Forecasting; Sezer, Gudelek & Ozbayoglu (2020) "Financial Time Series Forecasting with Deep Learning: A Systematic Literature Review"; Khairunnisa et al. (2024) and Budiprasetyo, Hani'ah & Aflah (2023) on LSTM for Islamic stocks.
+4.4 Ensemble / hybrid approaches
+Why: The best published results on financial forecasting are hybrids — e.g. GARCH residuals fed into LSTM, or stacking ARIMA + XGBoost + LSTM. Empirical Asset Pricing via ML (Gu, Kelly, Xiu 2020) shows ensemble methods dominate single models.
+Python libraries: sklearn.ensemble.StackingRegressor, mlxtend, custom stacking with optuna-tuned meta-learner; darts ensemble model classes.
+Approach: (i) GARCH(1,1) produces volatility forecast σ̂; (ii) XGBoost on log-returns + features produces a directional probability; (iii) LSTM on full price/feature panel produces a point return forecast; (iv) ridge meta-learner combines all three with walk-forward weights.
+Strengths: Best forecasting accuracy in practice; each model corrects others' biases.
+Weaknesses: Engineering complexity; harder to explain in academic papers.
+4.5 Factor models — Fama-French / Carhart adapted for Islamic indices
+Why: The literature is clear — Islamic equity returns are well-described by a 3- to 5-factor model with sign-flipped value (HML negative because financials/value excluded), positive momentum, and a strong investment factor (CMA) loading (Safiullah & Shamsuddin 2021, International Review of Finance; Abdul Halim 2023). For long-horizon forecasting, factor-conditional expected returns are more stable than raw price forecasts.
+Python libraries: statsmodels.regression.linear_model.OLS, linearmodels (Sheppard) for panel and risk-factor regressions; pandas-datareader to pull Ken French data library; pyportfolioopt for Black–Litterman views.
+Features: Mkt-RF, SMB, HML, RMW, CMA, MOM — pulled from Ken French; use Developed factors for ISWD/IGDA, Emerging Markets factors for ISDE; optionally construct Islamic SMB/HML using only Shariah-compliant universe.
+Strengths: Interpretable, theory-grounded, robust for long-horizon expected return estimation; benchmark for testing whether ML adds alpha.
+Weaknesses: Linear; assumes constant betas; ignores microstructure.
+References: Fama & French (1993, 2015); Carhart (1997); Safiullah & Shamsuddin (2021) "Asset Pricing Factors in Islamic Equity Returns"; Girard & Hassan (2008).
+4.6 Bayesian Structural Time Series (BSTS) / Prophet / NeuralProphet
+Why: Long-horizon forecasts benefit from decomposition into trend + seasonality + holiday/event regressors. BSTS provides credible intervals critical for risk-aware decisions. NeuralProphet has been used on Jakarta Islamic Index forecasting (Ghosh & Jana 2024; Indatu Journal 2024).
+Python libraries: prophet (Meta); neuralprophet; causalimpact (Google's BSTS wrapper); pymc for full Bayesian; tensorflow-probability.sts for Google's STS implementation.
+Features: Trend (logistic with cap = previous all-time high × 2), yearly seasonality, monthly seasonality, custom regressors (VIX, oil), changepoint prior for rebalance dates.
+Strengths: Interpretable components; native uncertainty quantification; handles missing data and irregular events.
+Weaknesses: Equity returns have weak seasonality — Prophet often does little better than ARIMA on financial data; can be slow.
+References: Taylor & Letham (2018) "Forecasting at Scale," American Statistician; Scott & Varian (2014) BSTS paper.
+4.7 Regime-switching — Hidden Markov Models
+Why: Islamic ETFs are tech-heavy and behave very differently in tech-up vs tech-down regimes, and the financials-exclusion makes EM Islamic perform asymmetrically across "EM-on" / "EM-off" regimes. HMMs are well-tested for regime detection in equity returns (Nguyen 2018, MDPI Journal of Risk and Financial Management; QuantStart; PyQuant News).
+Python libraries: hmmlearn.GaussianHMM, statsmodels.tsa.regime_switching.MarkovRegression, pomegranate.
+Features: Univariate (log returns) or bivariate (returns + realized vol); 2-state (low-vol bull / high-vol bear) or 3-state (bull / neutral / bear).
+Use as gating layer: Train HMM on broad equity returns (S&P 500 or MSCI World) to get regime probabilities; condition the XGBoost/LSTM forecast on the inferred state.
+Strengths: Naturally captures fat tails and volatility clustering as state transitions; very interpretable; small data requirements.
+Weaknesses: Number-of-states selection is subjective; states can be unstable in walk-forward.
+References: Hamilton (1989) Econometrica; Nguyen & Nguyen (2018) "Regime-Switching Factor Investing with Hidden Markov Models," Journal of Risk and Financial Management.
+
+SECTION 5 — Recommended Full Python Pipeline
+5.1 Data sourcing
+Free / primary: yfinance (Yahoo) for ISWD.SW, IGDA.L, ISDE.L OHLCV — note Yahoo's known issues with adjusted close on UCITS ETFs across currencies; cross-check against BlackRock/Invesco NAV CSVs.
+Official: BlackRock factsheet downloads via the iShares product API (NAV history can be scraped from /products/<id>/literature/fund-performance); Invesco product PDF/CSV.
+Macro / factors: pandas-datareader → Ken French data library, FRED; fredapi; OECD via pandasdmx.
+Sentiment/news (optional): feedparser for RSS; NewsAPI; FinBERT (transformers) for Islamic-finance news classification.
+OpenBB Terminal (openbb) wraps many of these and exposes a Python SDK; Refinitiv Eikon (paid) and Bloomberg BLPAPI (paid) for institutional users. For academic use, WRDS subscriptions provide deeper history and dividend purification data.
+5.2 Feature engineering for Islamic ETFs specifically
+Shariah-aware factor proxies: build a "tech-quality" composite from XLK, IGV, XLV returns (covers ~50% of fund variance).
+Sector relative-strength signals: XLK vs XLF (tech minus financials) — proxies the very tilt that defines Shariah portfolios.
+Rebalance-event dummies: flag the 5 business days before/after MSCI quarterly reviews (Feb/May/Aug/Nov) and DJIM reviews (Mar/Jun/Sep/Dec for IGDA).
+Purification-yield proxy: difference between gross-return MSCI World and Islamic Index reflects dividend purification net of sector composition — usable as a feature.
+Mega-cap concentration risk indicators: rolling correlation of fund returns to NVDA/MSFT/AAPL/Samsung (the de facto top holdings).
+Currency-overlay features: for ISWD.SW USD/CHF; for ISDE USDKRW (Korea is 34% of fund).
+Implied volatility from VIX, VXEEM as forward-looking risk signals.
+Calendar features including Islamic Hijri calendar (Ramadan effect, documented for GCC markets).
+5.3 Train/test split — walk-forward validation
+Use sklearn.model_selection.TimeSeriesSplit with an expanding training window and embargoed gap. Pseudo-config:
+Initial training: first 70% of history (~2008–2020 for ISWD, 2022–2024 for IGDA)
+Step forward: 21 business days (one month)
+Embargo gap: 5 days to avoid label leakage from rolling features
+Test horizon: 21 or 63 days
+Retrain at every step
+For deep learning, use purged cross-validation (López de Prado, Advances in Financial Machine Learning, ch. 7) to remove training samples whose features overlap the test set's evaluation window.
+5.4 Evaluation metrics
+For point forecasts: MAE, RMSE, MAPE on returns (not prices — MAPE on prices is misleading); MASE for scale-free comparison. For directional / signal-quality: directional accuracy (DA), confusion-matrix-based F1 on up/down classification, Matthews correlation coefficient. For trading-relevant: annualized Sharpe ratio of a 1× long / 0 / short signal generated from the forecast, Sortino, max-drawdown, Calmar, hit rate, average gain / average loss ratio. For probabilistic forecasts (TFT, BSTS): pinball loss, CRPS (continuous ranked probability score), 95% interval coverage. For volatility forecasts (GARCH): QLIKE loss (preferred over MSE for variance) per Patton (2011).
+5.5 Risk management layer
+Volatility targeting: scale position by inverse of forecasted GARCH σ̂ to target 10% annualized portfolio vol.
+Regime gate: when HMM is in "high-vol" state with > 70% probability, reduce gross exposure by 50%.
+Drawdown circuit-breaker: if 21-day return < −10%, flatten to 50% until 21-day return > 0.
+Concentration cap: because ISDE's top-10 is ~39%, treat the fund itself as a concentrated bet — don't size it above 20% of a personal portfolio.
+FX hedge for non-USD investors: ISWD.SW is USD-denominated; a CHF-investor can either accept the USD exposure or implement a rolling 3-month forward hedge.
+5.6 Recommended pipeline architecture (academic & personal use)
+[Data ingestion: yfinance + BlackRock CSV + FRED + Ken French]
+         ↓
+[Feature engineering: lags, rolling vol, technicals, factor returns, regime dummies]
+         ↓
+[Walk-forward CV harness: TimeSeriesSplit with embargo]
+         ↓
+   ┌────────────────────┬──────────────────┬────────────────────┐
+[ARIMA/SARIMA]    [GARCH(1,1)/GJR]    [XGBoost / LightGBM]   [TFT or LSTM]
+   ↓                    ↓                    ↓                    ↓
+[Mean forecast]   [Variance forecast]  [Direction + return]   [Quantile forecast]
+              ↘            ↓                  ↓               ↙
+                 [Stacking meta-learner: ridge or LightGBM]
+                              ↓
+                     [HMM regime gate]
+                              ↓
+              [Risk overlay: vol targeting + drawdown circuit-breaker]
+                              ↓
+                  [Position sizing & signal output]
+                              ↓
+                [Evaluation: Sharpe, DA, RMSE, CRPS, MaxDD]
+                              ↓
+                  [MLflow / W&B experiment tracking]
+Recommended package stack: pandas, numpy, statsmodels, arch, pmdarima, xgboost, lightgbm, optuna, pytorch-forecasting, darts, neuralforecast, prophet, hmmlearn, pyportfolioopt, quantstats (for tearsheets), mlflow (experiment tracking), vectorbt or backtrader (backtesting), yfinance, pandas-datareader, fredapi.
+
+SECTION 6 — Academic Literature
+Islamic finance & ETF performance
+Alam, N. (2013) "A comparative performance analysis of conventional and Islamic exchange-traded funds," Journal of Asset Management — finds Islamic ETFs can outperform conventional ETFs on risk-adjusted basis in certain regimes.
+Hoepner, Rammal & Rezec (2011) "Islamic mutual funds' financial performance and international investment style," European Journal of Finance.
+Girard & Hassan (2008) "Is there a cost to faith-based investing? Evidence from FTSE Islamic indices," J. Investing.
+Naqvi, Rizvi, Mirza & Reddy (2018) "Religion-based investing and illusory diversification," Quarterly Review of Economics and Finance.
+Comparative study of conventional vs Islamic ETFs across MSCI World, MSCI EM and Wahed FTSE Shariah USA — Journal of Asian Finance, Economics and Business (2021) — Islamic ETFs more often trade at premium and show shorter periods of price deviation; conventional ETFs have ~1.26% higher annualized return but tracking error is comparable.
+Risks (MDPI, 2023) "Co-Movement and Performance Comparison of Conventional and Islamic Stock Indices during the Pre- and Post-COVID-19 Pandemic Era" — Islamic indices more resilient in crises.
+ML/DL for ETF and index forecasting (general)
+Gu, Kelly & Xiu (2020) "Empirical Asset Pricing via Machine Learning," Review of Financial Studies — benchmark study; gradient-boosted trees and neural nets dominate linear models.
+Lim, Arik, Loeff & Pfister (2021) "Temporal Fusion Transformers for Interpretable Multi-Horizon Time Series Forecasting," International Journal of Forecasting.
+Sezer, Gudelek & Ozbayoglu (2020) "Financial Time Series Forecasting with Deep Learning: A Systematic Literature Review (2005–2019)," Applied Soft Computing.
+Krauss, Do & Huck (2017) "Deep neural networks, gradient-boosted trees, random forests: Statistical arbitrage on the S&P 500," European Journal of Operational Research.
+López de Prado (2018) Advances in Financial Machine Learning (Wiley) — definitive on walk-forward CV, purging, embargo, and meta-labeling.
+Specifically on Shariah-compliant equity forecasting
+Khairunnisa, Rodoni & Rama (2024) "Predicting Shariah Stock Market Indices with Machine Learning: A Cross-Country Case Study," Jurnal Ekonomi Syariah Teori dan Terapan 11(1) — ARIMA on six Shariah indices (Indonesia, Malaysia, Pakistan, UAE, Qatar, Thailand) confirms EMH-weak-form predictability.
+Budiprasetyo, Hani'ah & Aflah (2023) "Prediksi Harga Saham Syariah Menggunakan Algoritma LSTM," Jurnal Nasional Teknologi dan Sistem Informasi.
+Indatu Journal of Management and Accounting (2024) "Artificial Intelligence in Islamic Finance: Forecasting Stock Indices with Neural Prophet."
+Humanities and Social Sciences Communications (Nature, 2024) — ANN linking global Islamic indices with a local Islamic index; finds significant predictive flow.
+IFN Investor / UAE-University study using NARX neural network on Dubai Financial Market Sharia Index — significant predictive ability documented.
+Volatility Patterns of Islamic Equity Funds Using Hybrid Machine Learning and GARCH Models (2025) — confirms GARCH-family models capture Islamic-fund volatility and hybrid ML-GARCH improves out-of-sample forecasts.
+Safiullah & Shamsuddin (2021) "Asset Pricing Factors in Islamic Equity Returns," International Review of Finance — factor structure of Shariah portfolios.
+"From Binary Screens to Continuous Compliance" (arXiv 2024) — proposes Continuous Shariah Compliance Index (CSCI); useful for academic feature engineering.
+
+Recommendations (concrete, staged)
+Build the data foundation first (Week 1): pull all three ETFs' NAV histories from BlackRock/Invesco and yfinance, plus Ken French factors and FRED macro. Reconcile. Compute log-returns, drawdowns, rolling vols. Output: a unified parquet dataset.
+Establish baselines (Weeks 2–3): persistence forecast (today = tomorrow), ARIMA(1,1,1), GARCH(1,1). Report RMSE / directional accuracy. This is the bar to beat.
+Add a factor model (Week 4): rolling 36-month Fama–French 5 + momentum regression. Get factor-conditional expected returns. Use as feature in ML models.
+Train XGBoost / LightGBM (Weeks 5–6): with ~30–60 engineered features and walk-forward CV. Optimize via Optuna. Target weekly returns. Decide promotion threshold: only deploy if DA > 55% and Sharpe of long/flat signal > 1.0 out-of-sample.
+Add deep learning if data permits (Weeks 7–8): Use a single TFT trained on all three ETFs jointly (transfer learning across funds) — this addresses IGDA's short history by borrowing strength from ISWD's 18 years. Use pytorch-forecasting.
+Add HMM regime gate (Week 9). Compare gated vs ungated performance.
+Risk overlay and backtest (Weeks 10–11): with quantstats tearsheet and full transaction-cost model (TER + bid-ask + slippage 5bps).
+Long-horizon module (Week 12): NeuralProphet/BSTS for 6–12 month forecasts with credible intervals — for portfolio-allocation use, not trading.
+Promotion benchmarks (what would change the recommendations): if walk-forward OOS DA < 53%, abandon ML in favor of buy-and-hold + GARCH risk-targeting only. If OOS Sharpe of stacked model < buy-and-hold Sharpe by more than 0.2, the cost-of-complexity is not justified. If IGDA's history exceeds 8 years (~2030), the case for a stand-alone TFT (no transfer learning needed) strengthens materially.
+
+Caveats
+Ticker confusion: The task labels IGDA.L as "iShares MSCI EM Islamic UCITS ETF." That is incorrect: IGDA.L is the Invesco Dow Jones Islamic Global Developed Markets UCITS ETF. The iShares MSCI EM Islamic UCITS ETF is ISDE.L. Both are profiled.
+AUM / return figures vary by source and currency snapshot; numbers shown are the most recent available from BlackRock, Invesco, justETF and ETF Express as of early 2026 — always reconcile against the current factsheet before publication.
+IGDA's short history (since January 2022) is the single largest constraint on ML training. Recommend pooling with ISWD/ISDE under a multi-series model (TFT, panel regression) rather than training stand-alone.
+Past performance is not indicative of future returns. The recent outperformance of Islamic indices vs conventional is largely a factor story (tech overweight + zero financials) that can reverse rapidly in a value-led market.
+Forecasting research papers cited use Indonesian, Malaysian and Pakistani indices — be cautious about transferring their accuracy claims to globally-diversified Islamic ETFs.
+Some market-size figures from secondary research firms (Market Data Forecast, Straits Research, Mordor Intelligence) vary widely (USD 2.46 trn vs USD 5.4 trn vs USD 44.92 bn for 2024) — methodology differs (asset base vs revenue base). The Coalition Greenwich and S&P Global figures (USD 5.4 trn assets, ~10% CAGR to USD 9.75 trn by 2029) are most consistent with banking industry reports.
+This report is not investment advice; it is a quantitative analyst's structural and modeling assessment for academic and personal research use.
